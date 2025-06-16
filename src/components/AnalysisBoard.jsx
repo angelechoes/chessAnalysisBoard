@@ -11,6 +11,8 @@ const AnalysisBoard = () => {
   const [currentMove, setCurrentMove] = useState(-1);
   // This will store the generated PGN
   const [pgn, setPgn] = useState('');
+  // State for the custom context menu
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, index }
 
   // This will store the comment for the current move.
   const [comment, setComment] = useState('');
@@ -74,6 +76,39 @@ const AnalysisBoard = () => {
       const newMoves = [...moves];
       newMoves[currentMove].comment = newComment;
       setMoves(newMoves);
+    }
+  };
+
+  // Effect to handle closing the context menu when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setContextMenu(null);
+    };
+    if (contextMenu) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, [contextMenu]);
+
+  const handleContextMenu = (event, index) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, index });
+  };
+
+  const handleDeleteMove = () => {
+    if (!contextMenu) return;
+    const { index } = contextMenu;
+    setContextMenu(null); // Close the menu
+
+    if (window.confirm('Are you sure you want to delete this move and all subsequent moves?')) {
+      const newMoves = moves.slice(0, index);
+      setMoves(newMoves);
+      
+      // Go to the move before the one that was deleted
+      const newCurrentMove = Math.max(index - 1, -1);
+      navigateToMove(newCurrentMove);
     }
   };
 
@@ -154,6 +189,7 @@ const AnalysisBoard = () => {
                         <span
                           className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
                           onClick={() => navigateToMove(whiteMoveIndex)}
+                          onContextMenu={(e) => handleContextMenu(e, whiteMoveIndex)}
                         >
                           {whiteMoveData.move.san}
                         </span>
@@ -175,6 +211,7 @@ const AnalysisBoard = () => {
                            <span
                             className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
                             onClick={() => navigateToMove(blackMoveIndex)}
+                            onContextMenu={(e) => handleContextMenu(e, blackMoveIndex)}
                           >
                             {blackMoveData.move.san}
                           </span>
@@ -197,6 +234,7 @@ const AnalysisBoard = () => {
                   <span
                     className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
                     onClick={() => navigateToMove(whiteMoveIndex)}
+                    onContextMenu={(e) => handleContextMenu(e, whiteMoveIndex)}
                   >
                     {whiteMoveData.move.san}
                   </span>
@@ -204,6 +242,7 @@ const AnalysisBoard = () => {
                     <span
                       className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
                       onClick={() => navigateToMove(blackMoveIndex)}
+                      onContextMenu={(e) => handleContextMenu(e, blackMoveIndex)}
                     >
                       {blackMoveData.move.san}
                     </span>
@@ -228,6 +267,17 @@ const AnalysisBoard = () => {
         <h3>Live PGN</h3>
         <pre>{pgn}</pre>
       </div>
+
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <div className="context-menu-item" onClick={handleDeleteMove}>
+            Delete
+          </div>
+        </div>
+      )}
     </>
   );
 };

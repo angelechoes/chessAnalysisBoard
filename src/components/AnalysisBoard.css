@@ -120,4 +120,23 @@
   white-space: pre-wrap; /* Allow text to wrap */
   word-wrap: break-word;
   margin: 0;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
+  padding: 5px 0;
+}
+
+.context-menu-item {
+  padding: 8px 15px;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background-color: #f0f0f0;
 } 
