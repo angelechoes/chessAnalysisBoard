@@ -30,12 +30,25 @@
 }
 
 .moves-list {
+  /* removed flex properties */
+}
+
+.move-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  padding: 2px 0; /* Tighter padding */
+}
+
+.move-number {
+  flex-basis: 30px;
+  flex-shrink: 0;
+  color: #777;
+  font-weight: bold;
+  padding-right: 5px;
 }
 
 .move {
+  flex: 1 1 0;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -51,16 +64,20 @@
   color: #000;
 }
 
-.move-container {
-  width: 100%;
+.empty-move {
+  flex: 1 1 0;
+  color: #999;
+}
+
+.comment-row {
+  padding: 0 0 8px 0; /* remove indent */
 }
 
 .comment {
   font-style: italic;
   color: #555;
-  padding-left: 15px;
-  margin-top: 4px;
-  margin-bottom: 8px;
+  padding-left: 35px; /* New padding to align with move text */
+  margin: 0;
   font-size: 0.9em;
 }
 

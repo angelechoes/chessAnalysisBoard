@@ -108,17 +108,88 @@ const AnalysisBoard = () => {
       <div className="move-history">
         <h2>Moves</h2>
         <div className="moves-list">
-          {moves.map((moveData, index) => (
-            <div key={index} className="move-container">
-              <span
-                className={`move ${currentMove === index ? 'selected-move' : ''}`}
-                onClick={() => navigateToMove(index)}
-              >
-                {index % 2 === 0 ? `${Math.floor(index / 2) + 1}. ` : ''}{moveData.move.san}
-              </span>
-              {moveData.comment && <div className="comment">{moveData.comment}</div>}
-            </div>
-          ))}
+          {Array.from({ length: Math.ceil(moves.length / 2) }).map((_, i) => {
+            const moveNumber = i + 1;
+            const whiteMoveIndex = i * 2;
+            const blackMoveIndex = i * 2 + 1;
+            const whiteMoveData = moves[whiteMoveIndex];
+            const blackMoveData = moves[blackMoveIndex];
+
+            if (!whiteMoveData) return null;
+
+            const hasWhiteComment = whiteMoveData.comment && whiteMoveData.comment.length > 0;
+            const hasBlackComment = blackMoveData && blackMoveData.comment && blackMoveData.comment.length > 0;
+
+            // If either move has a comment, split them into separate blocks
+            if (hasWhiteComment || hasBlackComment) {
+              return (
+                <React.Fragment key={i}>
+                  {/* White Move Block */}
+                  <div className="move-row-block">
+                    <div className="move-row">
+                      <span className="move-number">{moveNumber}.</span>
+                      <span
+                        className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
+                        onClick={() => navigateToMove(whiteMoveIndex)}
+                      >
+                        {whiteMoveData.move.san}
+                      </span>
+                      <span className="move empty-move">...</span>
+                    </div>
+                    {hasWhiteComment && (
+                      <div className="comment-row">
+                        <div className="comment">{whiteMoveData.comment}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Black Move Block */}
+                  {blackMoveData && (
+                    <div className="move-row-block">
+                      <div className="move-row">
+                         <span className="move-number" />
+                         <span className="move empty-move">...</span>
+                         <span
+                          className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
+                          onClick={() => navigateToMove(blackMoveIndex)}
+                        >
+                          {blackMoveData.move.san}
+                        </span>
+                      </div>
+                      {hasBlackComment && (
+                         <div className="comment-row">
+                           <div className="comment">{blackMoveData.comment}</div>
+                         </div>
+                      )}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            }
+            
+            // If no comments, render on a single line
+            return (
+              <div className="move-row" key={i}>
+                <span className="move-number">{moveNumber}.</span>
+                <span
+                  className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
+                  onClick={() => navigateToMove(whiteMoveIndex)}
+                >
+                  {whiteMoveData.move.san}
+                </span>
+                {blackMoveData ? (
+                  <span
+                    className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
+                    onClick={() => navigateToMove(blackMoveIndex)}
+                  >
+                    {blackMoveData.move.san}
+                  </span>
+                ) : (
+                  <span className="move empty-move" />
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="comment-box">
             <h3>Comment</h3>
