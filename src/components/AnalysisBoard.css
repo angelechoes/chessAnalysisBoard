@@ -49,4 +49,38 @@
 .selected-move {
   background-color: #bde0ff;
   color: #000;
+}
+
+.move-container {
+  width: 100%;
+}
+
+.comment {
+  font-style: italic;
+  color: #555;
+  padding-left: 15px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.comment-box {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.comment-box h3 {
+    margin-top: 0;
+}
+
+.comment-box textarea {
+  width: 100%;
+  box-sizing: border-box; /* Ensures padding doesn't affect width */
+  min-height: 80px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  font-family: sans-serif;
+  font-size: 1em;
 } 
