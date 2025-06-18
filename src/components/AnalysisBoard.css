@@ -30,55 +30,72 @@
 }
 
 .moves-list {
-  /* removed flex properties */
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .move-row {
   display: flex;
-  align-items: center;
-  padding: 2px 0; /* Tighter padding */
+  align-items: baseline;
+  padding: 2px 0;
 }
 
 .move-number {
-  flex-basis: 30px;
+  flex-basis: 35px;
   flex-shrink: 0;
   color: #777;
-  font-weight: bold;
+  text-align: right;
   padding-right: 5px;
 }
 
+.move-pair {
+    flex-basis: 50%;
+    display: block;
+}
+
+.move-group {
+    display: inline;
+}
+
 .move {
-  flex: 1 1 0;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+    display: inline-block;
+    font-weight: 600;
+    padding: 2px 4px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .move:hover {
-  background-color: #f0f0f0;
+    background-color: #f0f0f0;
 }
 
 .selected-move {
-  background-color: #bde0ff;
-  color: #000;
+    background-color: #bde0ff;
 }
 
-.empty-move {
-  flex: 1 1 0;
-  color: #999;
+.variations-inline {
+    margin-left: 6px;
+    color: #555;
+    font-weight: normal;
+}
+
+.variation-inline {
+    margin-right: 6px;
 }
 
 .comment-row {
-  padding: 0 0 8px 0; /* remove indent */
+    padding: 0 0 5px 0;
 }
 
 .comment {
-  font-style: italic;
   color: #555;
-  padding-left: 35px; /* New padding to align with move text */
-  margin: 0;
-  font-size: 0.9em;
+  font-style: italic;
+  display: block;
+  padding-left: 10px; /* Indent under the move pair */
+}
+
+.empty-move {
+    color: #999;
 }
 
 .comment-box {
@@ -139,4 +156,28 @@
 
 .context-menu-item:hover {
   background-color: #f0f0f0;
+}
+
+.branch-selection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.branch-selection h4 {
+    margin: 0 0 10px 0;
+}
+
+.branch-selection button {
+    margin-right: 5px;
+    margin-bottom: 5px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.branch-selection button:hover {
+    background-color: #e0e0e0;
 } 

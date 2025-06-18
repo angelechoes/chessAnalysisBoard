@@ -1,265 +1,338 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useImmer } from 'use-immer';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import './AnalysisBoard.css';
 
+// A unique ID for new nodes
+let nextId = 0;
+
 const AnalysisBoard = () => {
-  const [game, setGame] = useState(new Chess());
-  // The moves state will store the PGN history
-  const [moves, setMoves] = useState([]);
-  // The currentMove state will track the index of the move being viewed
-  const [currentMove, setCurrentMove] = useState(-1);
-  // This will store the generated PGN
-  const [pgn, setPgn] = useState('');
-  // State for the custom context menu
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, index }
+  // The game tree now holds the entire game state
+  const [tree, setTree] = useImmer({
+    id: 'root',
+    san: null,
+    comment: '',
+    fen: new Chess().fen(),
+    ply: -1,
+    children: [],
+  });
 
-  // This will store the comment for the current move.
-  const [comment, setComment] = useState('');
+  // currentPath tracks the location within the tree (e.g., [0, 1])
+  const [currentPath, setCurrentPath] = useState([]);
+  
+  // Find a node in the tree by its path
+  const getNode = useCallback((path, sourceTree = tree) => {
+    let node = sourceTree;
+    for (const index of path) {
+      node = node.children[index];
+    }
+    return node;
+  }, [tree]);
 
-  // Function to update the board to a specific move
-  const navigateToMove = (moveIndex) => {
-    const newGame = new Chess();
-    // Replay moves from the start to the desired move
-    for (let i = 0; i <= moveIndex; i++) {
-      newGame.move(moves[i].move);
+  // Get the FEN for a given path by replaying moves
+  const getFenForPath = useCallback((path) => {
+    const game = new Chess();
+    let currentNode = tree;
+    for (const index of path) {
+        currentNode = currentNode.children[index];
+        game.move(currentNode.san);
     }
-    setGame(newGame);
-    setCurrentMove(moveIndex);
-    // When we navigate to a move, we'll update the comment box
-    if (moveIndex >= 0) {
-        setComment(moves[moveIndex].comment || '');
-    } else {
-        setComment('');
-    }
-  };
+    return game.fen();
+  }, [tree]);
+
+  const currentNode = getNode(currentPath);
+  const gameFen = getFenForPath(currentPath);
 
   function onDrop(sourceSquare, targetSquare) {
-    // If we're viewing a past move, we can't make a new one from here yet
-    // (this will be where variations will be handled later)
-    if (currentMove !== moves.length - 1 && moves.length > 0) {
-        // For now, let's just jump to the latest move before making a new one
-        navigateToMove(moves.length - 1);
-    }
+    const game = new Chess(gameFen);
+    const move = game.move({
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: 'q',
+    });
 
-    const newGame = new Chess(game.fen());
-    try {
-      const move = newGame.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: 'q', // always promote to a queen for simplicity
-      });
+    if (!move) return false;
 
-      // If the move is legal
-      if (move) {
-        setGame(newGame);
-        // We'll store an object with the move and an empty comment
-        const newMoves = [...moves, { move, comment: '' }];
-        setMoves(newMoves);
-        setCurrentMove(newMoves.length - 1);
-        // Clear the comment box for the new move
-        setComment('');
-        return true;
+    setTree(draft => {
+      const parentNode = getNode(currentPath, draft);
+      const newNode = {
+        id: nextId++,
+        move,
+        san: move.san,
+        comment: '',
+        fen: game.fen(),
+        ply: parentNode.ply + 1,
+        children: [],
+      };
+      
+      // Check if this move already exists as a variation
+      const existingChildIndex = parentNode.children.findIndex(child => child.san === newNode.san);
+
+      if (existingChildIndex !== -1) {
+        // If it exists, we just navigate to it
+        setCurrentPath([...currentPath, existingChildIndex]);
+      } else {
+        // If it's a new move, add it as a new variation/child
+        parentNode.children.push(newNode);
+        setCurrentPath([...currentPath, parentNode.children.length - 1]);
       }
-    } catch (error) {
-      console.log(error);
-      return false;
-    }
-    return false;
+    });
+    return true;
   }
+
+  const navigateToPath = (path) => {
+    setCurrentPath(path);
+    const node = getNode(path);
+    setComment(node.comment || '');
+  };
   
-  // This function will be called when the comment textarea changes.
+  const [comment, setComment] = useState(currentNode.comment || '');
+
   const handleCommentChange = (e) => {
     const newComment = e.target.value;
     setComment(newComment);
-    if (currentMove >= 0) {
-      const newMoves = [...moves];
-      newMoves[currentMove].comment = newComment;
-      setMoves(newMoves);
-    }
+    setTree(draft => {
+      getNode(currentPath, draft).comment = newComment;
+    });
   };
 
-  // Effect to handle closing the context menu when clicking outside
+  const [contextMenu, setContextMenu] = useState(null);
+
   useEffect(() => {
-    const handleOutsideClick = () => {
-      setContextMenu(null);
-    };
-    if (contextMenu) {
-      window.addEventListener('click', handleOutsideClick);
-    }
-    return () => {
-      window.removeEventListener('click', handleOutsideClick);
-    };
+    const handleOutsideClick = () => setContextMenu(null);
+    if (contextMenu) window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
   }, [contextMenu]);
 
-  const handleContextMenu = (event, index) => {
+  const handleContextMenu = (event, path) => {
     event.preventDefault();
-    setContextMenu({ x: event.clientX, y: event.clientY, index });
+    setContextMenu({ x: event.clientX, y: event.clientY, path });
   };
 
   const handleDeleteMove = () => {
     if (!contextMenu) return;
-    const { index } = contextMenu;
-    setContextMenu(null); // Close the menu
+    const { path } = contextMenu;
+    setContextMenu(null);
 
     if (window.confirm('Are you sure you want to delete this move and all subsequent moves?')) {
-      const newMoves = moves.slice(0, index);
-      setMoves(newMoves);
+      const parentPath = path.slice(0, -1);
+      const childIndex = path[path.length - 1];
       
-      // Go to the move before the one that was deleted
-      const newCurrentMove = Math.max(index - 1, -1);
-      navigateToMove(newCurrentMove);
+      setTree(draft => {
+        const parentNode = getNode(parentPath, draft);
+        parentNode.children.splice(childIndex, 1);
+      });
+      
+      navigateToPath(parentPath);
     }
   };
 
-  // Effect to generate PGN whenever moves change
-  useEffect(() => {
-    let pgnString = '';
-    moves.forEach((moveData, index) => {
-      // Add move number for white's move
-      if (index % 2 === 0) {
-        pgnString += `${Math.floor(index / 2) + 1}. `;
-      }
+  const handlePromoteVariation = () => {
+    if (!contextMenu) return;
+    const { path } = contextMenu;
+    setContextMenu(null);
+    
+    const parentPath = path.slice(0, -1);
+    const childIndex = path[path.length - 1];
 
-      pgnString += `${moveData.move.san} `;
+    if (childIndex === 0) return; // Already the main line
 
-      // Add the comment if it exists
-      if (moveData.comment && moveData.comment.length > 0) {
-        pgnString += `{ ${moveData.comment} } `;
-      }
+    setTree(draft => {
+        const parentNode = getNode(parentPath, draft);
+        const [variation] = parentNode.children.splice(childIndex, 1);
+        parentNode.children.unshift(variation);
     });
+    // The path of the promoted move is now [..., 0]
+    navigateToPath([...parentPath, 0]);
+  };
 
+  const [pgn, setPgn] = useState('');
+
+  const generatePgnRecursive = useCallback((node) => {
+    if (!node || !node.children || node.children.length === 0) {
+        return '';
+    }
+
+    let pgnString = '';
+    const mainLine = node.children[0];
+    const variations = node.children.slice(1);
+
+    // Add move number for white's move.
+    if (mainLine.ply % 2 === 0) {
+        pgnString += `${mainLine.ply / 2 + 1}. `;
+    }
+
+    pgnString += `${mainLine.san} `;
+    if (mainLine.comment) pgnString += `{ ${mainLine.comment} } `;
+    
+    // Add variations
+    variations.forEach(variation => {
+        const variationGame = new Chess(node.fen);
+        variationGame.move(variation.san);
+        
+        let variationPgn = '';
+        if (variation.ply % 2 !== 0) {
+             variationPgn += `${Math.floor(variation.ply / 2) + 1}... `;
+        }
+        variationPgn += `${variation.san} `;
+        if (variation.comment) variationPgn += `{ ${variation.comment} } `;
+        variationPgn += generatePgnRecursive(variation);
+
+        pgnString += `(${variationPgn.trim()}) `;
+    });
+    
+    // Recurse down the main line
+    pgnString += generatePgnRecursive(mainLine);
+    return pgnString;
+  }, []);
+
+  useEffect(() => {
+    const pgnString = generatePgnRecursive(tree);
     setPgn(pgnString.trim() + ' *');
-  }, [moves]);
+  }, [tree, generatePgnRecursive]);
 
-  // Effect for handling keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'ArrowLeft') {
-        const newMoveIndex = Math.max(currentMove - 1, -1);
-        if (newMoveIndex === -1) {
-          setGame(new Chess()); // Go to start
-          setCurrentMove(-1);
-        } else {
-          navigateToMove(newMoveIndex);
+        if (currentPath.length > 0) {
+          navigateToPath(currentPath.slice(0, -1));
         }
       } else if (event.key === 'ArrowRight') {
-        const newMoveIndex = Math.min(currentMove + 1, moves.length - 1);
-        if(newMoveIndex < moves.length) {
-            navigateToMove(newMoveIndex);
+        const node = getNode(currentPath);
+        if (node.children.length > 0) {
+          navigateToPath([...currentPath, 0]); // Go to main line
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [moves, currentMove]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPath, getNode, navigateToPath]);
 
+  const MoveRenderer = ({ node, path, ...props }) => {
+    const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
+    const variations = node.children.slice(1);
+
+    return (
+        <span className="move-group">
+            <span
+                className={`move ${isSelected ? 'selected-move' : ''}`}
+                onClick={() => props.navigateToPath(path)}
+                onContextMenu={(e) => props.handleContextMenu(e, path)}
+            >
+                {node.san}
+            </span>
+            
+            {variations.length > 0 && (
+                <span className="variations-inline">
+                    {variations.map((variationNode, index) => (
+                        <span key={variationNode.id} className="variation-inline">
+                            (
+                                <span
+                                    className={`move ${JSON.stringify([...path.slice(0, -1), index + 1]) === JSON.stringify(props.currentPath) ? 'selected-move' : ''}`}
+                                    onClick={() => props.navigateToPath([...path.slice(0, -1), index + 1])}
+                                >
+                                    {variationNode.san}
+                                </span>
+                            )
+                        </span>
+                    ))}
+                </span>
+            )}
+        </span>
+    );
+  };
+
+  const MovesDisplay = ({ tree, ...props }) => {
+    const mainLine = [];
+    let current = tree;
+    let path = [];
+    while (current && current.children.length > 0) {
+        const mainMoveNode = current.children[0];
+        path.push(0);
+        mainLine.push({ node: mainMoveNode, path: [...path] });
+        current = mainMoveNode;
+    }
+
+    const rows = [];
+    for (let i = 0; i < mainLine.length; i += 2) {
+        const white = mainLine[i];
+        const black = mainLine[i + 1];
+
+        const hasWhiteComment = white.node.comment && white.node.comment.length > 0;
+        const hasBlackComment = black && black.node.comment && black.node.comment.length > 0;
+        
+        if (hasWhiteComment || hasBlackComment) {
+            // Render on separate lines if there are comments
+            rows.push(
+                <div key={`${i}-w`} className="move-row">
+                    <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
+                    <span className="move-pair">
+                        <MoveRenderer node={white.node} path={white.path} {...props} />
+                    </span>
+                    <span className="move-pair empty-move">...</span>
+                </div>
+            );
+            if(hasWhiteComment) rows.push(<div key={`${i}-wc`} className="comment-row"><div className="comment">{white.node.comment}</div></div>);
+
+            if(black) {
+                rows.push(
+                    <div key={`${i}-b`} className="move-row">
+                        <span className="move-number"></span>
+                        <span className="move-pair empty-move">...</span>
+                        <span className="move-pair">
+                            <MoveRenderer node={black.node} path={black.path} {...props} />
+                        </span>
+                    </div>
+                );
+                if(hasBlackComment) rows.push(<div key={`${i}-bc`} className="comment-row"><div className="comment">{black.node.comment}</div></div>);
+            }
+        } else {
+             // Render on the same line if no comments
+            rows.push(
+                <div key={i} className="move-row">
+                    <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
+                    <span className="move-pair">
+                        <MoveRenderer node={white.node} path={white.path} {...props} />
+                    </span>
+                    <span className="move-pair">
+                        {black && <MoveRenderer node={black.node} path={black.path} {...props} />}
+                    </span>
+                </div>
+            );
+        }
+    }
+    return <div>{rows}</div>;
+  };
+  
   return (
     <>
       <div className="analysis-board-container">
         <div className="analysis-board">
-          <Chessboard position={game.fen()} onPieceDrop={onDrop} />
+          <Chessboard position={gameFen} onPieceDrop={onDrop} />
         </div>
         <div className="move-history">
           <h2>Moves</h2>
           <div className="moves-list">
-            {Array.from({ length: Math.ceil(moves.length / 2) }).map((_, i) => {
-              const moveNumber = i + 1;
-              const whiteMoveIndex = i * 2;
-              const blackMoveIndex = i * 2 + 1;
-              const whiteMoveData = moves[whiteMoveIndex];
-              const blackMoveData = moves[blackMoveIndex];
-
-              if (!whiteMoveData) return null;
-
-              const hasWhiteComment = whiteMoveData.comment && whiteMoveData.comment.length > 0;
-              const hasBlackComment = blackMoveData && blackMoveData.comment && blackMoveData.comment.length > 0;
-
-              // If either move has a comment, split them into separate blocks
-              if (hasWhiteComment || hasBlackComment) {
-                return (
-                  <React.Fragment key={i}>
-                    {/* White Move Block */}
-                    <div className="move-row-block">
-                      <div className="move-row">
-                        <span className="move-number">{moveNumber}.</span>
-                        <span
-                          className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
-                          onClick={() => navigateToMove(whiteMoveIndex)}
-                          onContextMenu={(e) => handleContextMenu(e, whiteMoveIndex)}
-                        >
-                          {whiteMoveData.move.san}
-                        </span>
-                        <span className="move empty-move">...</span>
-                      </div>
-                      {hasWhiteComment && (
-                        <div className="comment-row">
-                          <div className="comment">{whiteMoveData.comment}</div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Black Move Block */}
-                    {blackMoveData && (
-                      <div className="move-row-block">
-                        <div className="move-row">
-                           <span className="move-number" />
-                           <span className="move empty-move">...</span>
-                           <span
-                            className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
-                            onClick={() => navigateToMove(blackMoveIndex)}
-                            onContextMenu={(e) => handleContextMenu(e, blackMoveIndex)}
-                          >
-                            {blackMoveData.move.san}
-                          </span>
-                        </div>
-                        {hasBlackComment && (
-                           <div className="comment-row">
-                             <div className="comment">{blackMoveData.comment}</div>
-                           </div>
-                        )}
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              }
-              
-              // If no comments, render on a single line
-              return (
-                <div className="move-row" key={i}>
-                  <span className="move-number">{moveNumber}.</span>
-                  <span
-                    className={`move ${currentMove === whiteMoveIndex ? 'selected-move' : ''}`}
-                    onClick={() => navigateToMove(whiteMoveIndex)}
-                    onContextMenu={(e) => handleContextMenu(e, whiteMoveIndex)}
-                  >
-                    {whiteMoveData.move.san}
-                  </span>
-                  {blackMoveData ? (
-                    <span
-                      className={`move ${currentMove === blackMoveIndex ? 'selected-move' : ''}`}
-                      onClick={() => navigateToMove(blackMoveIndex)}
-                      onContextMenu={(e) => handleContextMenu(e, blackMoveIndex)}
-                    >
-                      {blackMoveData.move.san}
-                    </span>
-                  ) : (
-                    <span className="move empty-move" />
-                  )}
-                </div>
-              );
-            })}
+             <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
           </div>
+          {currentNode.children.length > 1 && (
+            <div className="branch-selection">
+              <h4>Variations</h4>
+              {currentNode.children.map((child, index) => (
+                <button key={child.id} onClick={() => navigateToPath([...currentPath, index])}>
+                  {child.san}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="comment-box">
-              <h3>Comment</h3>
-              <textarea
-                  value={comment}
-                  onChange={handleCommentChange}
-                  placeholder="Add a comment to the current move..."
-              />
+            <h3>Comment</h3>
+            <textarea
+              value={comment}
+              onChange={handleCommentChange}
+              placeholder="Add a comment to the current move..."
+            />
           </div>
         </div>
       </div>
@@ -267,15 +340,10 @@ const AnalysisBoard = () => {
         <h3>Live PGN</h3>
         <pre>{pgn}</pre>
       </div>
-
       {contextMenu && (
-        <div
-          className="context-menu"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-        >
-          <div className="context-menu-item" onClick={handleDeleteMove}>
-            Delete
-          </div>
+        <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+          <div className="context-menu-item" onClick={handleDeleteMove}>Delete</div>
+          <div className="context-menu-item" onClick={handlePromoteVariation}>Promote variation</div>
         </div>
       )}
     </>
