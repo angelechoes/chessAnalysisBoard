@@ -209,9 +209,38 @@ const AnalysisBoard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPath, getNode, navigateToPath]);
 
-  const MoveRenderer = ({ node, path, ...props }) => {
+  const MoveRenderer = ({ node, path, isVariation, ...props }) => {
     const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
     const variations = node.children.slice(1);
+    
+    // Recursive function to render a full line of moves
+    const renderLine = (lineNode, linePath, isBranch) => {
+        if (!lineNode) return null;
+        
+        const lineIsSelected = JSON.stringify(linePath) === JSON.stringify(props.currentPath);
+        const moveNumber = Math.floor(lineNode.ply / 2) + 1;
+        const showMoveNumber = lineNode.ply % 2 === 0 || isBranch;
+
+        return (
+            <>
+                <span className="move-wrapper">
+                    {showMoveNumber && (
+                        <span className="move-number">
+                            {moveNumber}.{lineNode.ply % 2 !== 0 ? '..' : ''}
+                        </span>
+                    )}
+                    <span
+                        className={`move ${lineIsSelected ? 'selected-move' : ''}`}
+                        onClick={() => props.navigateToPath(linePath)}
+                        onContextMenu={(e) => props.handleContextMenu(e, linePath)}
+                    >
+                        {lineNode.san}
+                    </span>
+                </span>
+                {lineNode.children.length > 0 && renderLine(lineNode.children[0], [...linePath, 0], false)}
+            </>
+        )
+    }
 
     return (
         <span className="move-group">
@@ -228,12 +257,7 @@ const AnalysisBoard = () => {
                     {variations.map((variationNode, index) => (
                         <span key={variationNode.id} className="variation-inline">
                             (
-                                <span
-                                    className={`move ${JSON.stringify([...path.slice(0, -1), index + 1]) === JSON.stringify(props.currentPath) ? 'selected-move' : ''}`}
-                                    onClick={() => props.navigateToPath([...path.slice(0, -1), index + 1])}
-                                >
-                                    {variationNode.san}
-                                </span>
+                                {renderLine(variationNode, [...path.slice(0, -1), index + 1], true)}
                             )
                         </span>
                     ))}

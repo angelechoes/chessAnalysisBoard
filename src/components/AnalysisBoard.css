@@ -51,10 +51,16 @@
 .move-pair {
     flex-basis: 50%;
     display: block;
+    line-height: 1.5;
 }
 
 .move-group {
     display: inline;
+}
+
+.move-wrapper {
+    display: inline-block;
+    margin-right: 4px; /* Space between moves in a line */
 }
 
 .move {
@@ -77,10 +83,12 @@
     margin-left: 6px;
     color: #555;
     font-weight: normal;
+    display: inline;
 }
 
 .variation-inline {
     margin-right: 6px;
+    display: inline;
 }
 
 .comment-row {
