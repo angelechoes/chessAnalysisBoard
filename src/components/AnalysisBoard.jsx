@@ -21,6 +21,9 @@ const AnalysisBoard = () => {
   // currentPath tracks the location within the tree (e.g., [0, 1])
   const [currentPath, setCurrentPath] = useState([]);
   
+  // State for the PGN text area
+  const [pgnInput, setPgnInput] = useState('');
+
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
     let node = sourceTree;
@@ -94,6 +97,54 @@ const AnalysisBoard = () => {
     setComment(newComment);
     setTree(draft => {
       getNode(currentPath, draft).comment = newComment;
+    });
+  };
+
+  const handlePgnInputChange = (event) => {
+    setPgnInput(event.target.value);
+  };
+  
+  const handleLoadPgn = () => {
+    try {
+        const chess = new Chess();
+        chess.loadPgn(pgnInput);
+
+        const buildTree = (history) => {
+            let tree = { id: 'root', fen: new Chess().fen(), ply: -1, children: [] };
+            let currentNode = tree;
+
+            history.forEach(move => {
+                const newNode = {
+                    id: nextId++,
+                    san: move.san,
+                    comment: move.comment || '',
+                    fen: move.after,
+                    ply: currentNode.ply + 1,
+                    children: [],
+                    // We can add RAV (variations) parsing here later
+                };
+                currentNode.children.push(newNode);
+                currentNode = newNode;
+            });
+            return tree;
+        }
+        
+        console.log(`chess history: ${JSON.stringify(chess.history({ verbose: true }))}`);
+        const newTree = buildTree(chess.history({ verbose: true }));
+        setTree(newTree);
+        setCurrentPath([]);
+
+    } catch (error) {
+        console.error("Invalid PGN:", error);
+        alert("The PGN is invalid and could not be loaded.");
+    }
+  };
+  
+  const handleCopyPgn = () => {
+    navigator.clipboard.writeText(pgnInput).then(() => {
+        alert("PGN copied to clipboard!");
+    }, (err) => {
+        console.error('Could not copy PGN: ', err);
     });
   };
 
@@ -189,7 +240,7 @@ const AnalysisBoard = () => {
 
   useEffect(() => {
     const pgnString = generatePgnRecursive(tree);
-    setPgn(pgnString.trim() + ' *');
+    setPgnInput(pgnString.trim() + ' *');
   }, [tree, generatePgnRecursive]);
 
   useEffect(() => {
@@ -361,8 +412,16 @@ const AnalysisBoard = () => {
         </div>
       </div>
       <div className="pgn-display">
-        <h3>Live PGN</h3>
-        <pre>{pgn}</pre>
+        <div className="pgn-header">
+            <h3>Live PGN</h3>
+            <button onClick={handleCopyPgn} className="pgn-button">Copy</button>
+        </div>
+        <textarea 
+            value={pgnInput}
+            onChange={handlePgnInputChange}
+            className="pgn-textarea"
+        />
+        <button onClick={handleLoadPgn} className="pgn-button load-pgn-button">Load PGN from Text</button>
       </div>
       {contextMenu && (
         <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
