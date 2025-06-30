@@ -18,6 +18,11 @@ const AnalysisBoard = () => {
     children: [],
   });
 
+  useEffect( _=> {
+    console.log(`printing tree`);
+    console.log(tree);
+  }, [tree])
+
   // currentPath tracks the location within the tree (e.g., [0, 1])
   const [currentPath, setCurrentPath] = useState([]);
   
@@ -49,11 +54,15 @@ const AnalysisBoard = () => {
 
   function onDrop(sourceSquare, targetSquare) {
     const game = new Chess(gameFen);
+    console.log(`chess _history before move is ${JSON.stringify(game._history)}`);
+    
     const move = game.move({
       from: sourceSquare,
       to: targetSquare,
       promotion: 'q',
     });
+
+    console.log(`chess _history after move is ${JSON.stringify(game._history)}`);
 
     if (!move) return false;
 
