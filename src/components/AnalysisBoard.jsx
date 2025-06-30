@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useImmer } from 'use-immer';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
+import { parse } from '@mliebelt/pgn-parser';
 import './AnalysisBoard.css';
 
 // A unique ID for new nodes
@@ -21,6 +22,7 @@ const AnalysisBoard = () => {
   useEffect( _=> {
     console.log(`printing tree`);
     console.log(tree);
+    console.log(`currentPath: ${currentPath}`);
   }, [tree])
 
   // currentPath tracks the location within the tree (e.g., [0, 1])
@@ -115,37 +117,77 @@ const AnalysisBoard = () => {
   
   const handleLoadPgn = () => {
     try {
-        const chess = new Chess();
-        chess.loadPgn(pgnInput);
+      // The pgn-parser library returns null for an empty string.
+      if (!pgnInput) return;
 
-        const buildTree = (history) => {
-            let tree = { id: 'root', fen: new Chess().fen(), ply: -1, children: [] };
-            let currentNode = tree;
+      // Use the new library to parse the PGN string into a structured object (Abstract Syntax Tree)
+      const pgnAst = parse(pgnInput, { startRule: 'game' });
+      
+      if (!pgnAst || pgnAst.moves.length === 0) {
+        alert('Could not parse any moves from the PGN.');
+        return;
+      }
 
-            history.forEach(move => {
-                const newNode = {
-                    id: nextId++,
-                    san: move.san,
-                    comment: move.comment || '',
-                    fen: move.after,
-                    ply: currentNode.ply + 1,
-                    children: [],
-                    // We can add RAV (variations) parsing here later
-                };
-                currentNode.children.push(newNode);
-                currentNode = newNode;
-            });
-            return tree;
-        }
+      setTree(draft => {
+        // Reset the initial tree state
+        draft.id = 'root';
+        draft.san = null;
+        draft.comment = '';
+        draft.fen = new Chess().fen();
+        draft.ply = -1;
+        draft.children = [];
         
-        console.log(`chess history: ${JSON.stringify(chess.history({ verbose: true }))}`);
-        const newTree = buildTree(chess.history({ verbose: true }));
-        setTree(newTree);
-        setCurrentPath([]);
+        // This recursive function walks the parsed PGN's Abstract Syntax Tree
+        const addMovesToNode = (currentParentNode, moves) => {
+          if (!moves || moves.length === 0) {
+            return;
+          }
+
+          let lastNodeForThisLine = currentParentNode;
+
+          for (const move of moves) {
+            const game = new Chess(lastNodeForThisLine.fen);
+            const moveResult = game.move(move.notation.notation);
+            
+            if (moveResult) {
+              const newNode = {
+                id: nextId++,
+                move: moveResult,
+                san: moveResult.san,
+                // Comments can be before or after a move, so we combine them.
+                comment: [
+                  ...(move.commentBefore ? [move.commentBefore] : []),
+                  ...(move.commentMove ? [move.commentMove] : []),
+                  ...(move.commentAfter ? [move.commentAfter] : [])
+                ].join(' ').trim(),
+                fen: game.fen(),
+                ply: lastNodeForThisLine.ply + 1,
+                children: [],
+              };
+              lastNodeForThisLine.children.push(newNode);
+
+              // Variations are direct children of the move they are an alternative to.
+              if (move.variations) {
+                move.variations.forEach(variation => {
+                  addMovesToNode(lastNodeForThisLine, variation);
+                });
+              }
+              
+              // The next move in the main line follows the node we just added.
+              lastNodeForThisLine = newNode;
+            }
+          }
+        };
+        
+        // Start building the tree from the root node using the parsed moves
+        addMovesToNode(draft, pgnAst.moves);
+      });
+
+      setCurrentPath([]);
 
     } catch (error) {
-        console.error("Invalid PGN:", error);
-        alert("The PGN is invalid and could not be loaded.");
+      console.error("Invalid PGN:", error);
+      alert("The PGN is invalid and could not be loaded.");
     }
   };
   
