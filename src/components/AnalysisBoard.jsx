@@ -311,9 +311,14 @@ const AnalysisBoard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPath, getNode, navigateToPath]);
 
-  const MoveRenderer = ({ node, path, isVariation, ...props }) => {
+  const MoveRenderer = ({ node, path, isVariation, parentNode, ...props }) => {
     const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
-    const variations = node.children.slice(1);
+    
+    // A node's variations are its siblings. We get them from the parent.
+    const variations = parentNode ? parentNode.children.slice(1) : [];
+    
+    // Only render variations if this node is the first child of its parent (the main line move).
+    const isMainMoveOfGroup = parentNode ? parentNode.children[0].id === node.id : false;
     
     // Recursive function to render a full line of moves
     const renderLine = (lineNode, linePath, isBranch) => {
@@ -339,6 +344,7 @@ const AnalysisBoard = () => {
                         {lineNode.san}
                     </span>
                 </span>
+                {/* To render variations correctly, we need to find the parent of the next node. */}
                 {lineNode.children.length > 0 && renderLine(lineNode.children[0], [...linePath, 0], false)}
             </>
         )
@@ -354,15 +360,19 @@ const AnalysisBoard = () => {
                 {node.san}
             </span>
             
-            {variations.length > 0 && (
+            {isMainMoveOfGroup && variations.length > 0 && (
                 <span className="variations-inline">
-                    {variations.map((variationNode, index) => (
-                        <span key={variationNode.id} className="variation-inline">
-                            (
-                                {renderLine(variationNode, [...path.slice(0, -1), index + 1], true)}
-                            )
-                        </span>
-                    ))}
+                    {variations.map((variationNode, index) => {
+                        // The path to a variation is the parent's path + its index (offset by 1)
+                        const variationPath = [...path.slice(0, -1), index + 1];
+                        return (
+                            <span key={variationNode.id} className="variation-inline">
+                                (
+                                    {renderLine(variationNode, variationPath, true)}
+                                )
+                            </span>
+                        );
+                    })}
                 </span>
             )}
         </span>
@@ -375,8 +385,9 @@ const AnalysisBoard = () => {
     let path = [];
     while (current && current.children.length > 0) {
         const mainMoveNode = current.children[0];
+        const parentNode = current;
         path.push(0);
-        mainLine.push({ node: mainMoveNode, path: [...path] });
+        mainLine.push({ node: mainMoveNode, path: [...path], parentNode });
         current = mainMoveNode;
     }
 
@@ -394,7 +405,7 @@ const AnalysisBoard = () => {
                 <div key={`${i}-w`} className="move-row">
                     <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
                     <span className="move-pair">
-                        <MoveRenderer node={white.node} path={white.path} {...props} />
+                        <MoveRenderer node={white.node} path={white.path} parentNode={white.parentNode} {...props} />
                     </span>
                     <span className="move-pair empty-move">...</span>
                 </div>
@@ -407,7 +418,7 @@ const AnalysisBoard = () => {
                         <span className="move-number"></span>
                         <span className="move-pair empty-move">...</span>
                         <span className="move-pair">
-                            <MoveRenderer node={black.node} path={black.path} {...props} />
+                            <MoveRenderer node={black.node} path={black.path} parentNode={black.parentNode} {...props} />
                         </span>
                     </div>
                 );
@@ -419,10 +430,10 @@ const AnalysisBoard = () => {
                 <div key={i} className="move-row">
                     <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
                     <span className="move-pair">
-                        <MoveRenderer node={white.node} path={white.path} {...props} />
+                        <MoveRenderer node={white.node} path={white.path} parentNode={white.parentNode} {...props} />
                     </span>
                     <span className="move-pair">
-                        {black && <MoveRenderer node={black.node} path={black.path} {...props} />}
+                        {black && <MoveRenderer node={black.node} path={black.path} parentNode={black.parentNode} {...props} />}
                     </span>
                 </div>
             );
