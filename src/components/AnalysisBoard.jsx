@@ -359,7 +359,7 @@ const AnalysisBoard = () => {
             if (currentNode.comment && currentNode.comment.trim()) {
                 moves.push(
                     <span key={`comment-${currentNode.id}`} className="inline-comment">
-                        {` ${currentNode.comment.trim()}`}
+                        {` ${currentNode.comment.trim()} `}
                     </span>
                 );
             }
@@ -469,9 +469,16 @@ const AnalysisBoard = () => {
       <div className="analysis-board-container">
         <div className="analysis-board">
           <Chessboard position={gameFen} onPieceDrop={onDrop} />
+          <div className="comment-box">
+            <h3>Comment</h3>
+            <textarea
+              value={comment}
+              onChange={handleCommentChange}
+              placeholder="Add a comment to the current move..."
+            />
+          </div>
         </div>
         <div className="move-history">
-          <h2>Moves</h2>
           <div className="moves-list">
              <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
           </div>
@@ -485,14 +492,6 @@ const AnalysisBoard = () => {
               ))}
             </div>
           )}
-          <div className="comment-box">
-            <h3>Comment</h3>
-            <textarea
-              value={comment}
-              onChange={handleCommentChange}
-              placeholder="Add a comment to the current move..."
-            />
-          </div>
         </div>
       </div>
       <div className="pgn-display">
