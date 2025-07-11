@@ -106,6 +106,33 @@
     color: #888;
 }
 
+.variation-line.depth-2 {
+    margin-left: 20px;
+    background-color: #f0f0f0;
+    border-left-color: #bbb;
+}
+
+.variation-line.depth-3 {
+    margin-left: 40px;
+    background-color: #e8e8e8;
+    border-left-color: #999;
+}
+
+.sub-variations {
+    display: inline;
+}
+
+.sub-variations .variations-block {
+    display: inline;
+    margin-top: 0;
+}
+
+.sub-variations .variation-line {
+    display: inline;
+    margin-bottom: 0;
+    margin-right: 8px;
+}
+
 .inline-comment {
     color: #777;
     font-style: italic;

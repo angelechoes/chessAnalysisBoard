@@ -333,19 +333,19 @@ const AnalysisBoard = () => {
     );
   };
 
-  const VariationRenderer = ({ variations, basePath, ...props }) => {
+  const VariationRenderer = ({ variations, basePath, depth = 1, ...props }) => {
     if (!variations || variations.length === 0) return null;
 
     const renderVariationLine = (lineNode, linePath) => {
         if (!lineNode) return null;
         
-        const moves = [];
+        const elements = [];
         let currentNode = lineNode;
         let currentPath = linePath;
         
         while (currentNode) {
             const shouldShowMoveNumber = currentNode.ply % 2 === 0 || currentNode === lineNode;
-            moves.push(
+            elements.push(
                 <MoveRenderer 
                     key={currentNode.id}
                     node={currentNode} 
@@ -357,9 +357,24 @@ const AnalysisBoard = () => {
             );
             
             if (currentNode.comment && currentNode.comment.trim()) {
-                moves.push(
+                elements.push(
                     <span key={`comment-${currentNode.id}`} className="inline-comment">
                         {` ${currentNode.comment.trim()} `}
+                    </span>
+                );
+            }
+            
+            // Handle sub-variations within this line
+            if (currentNode.children.length > 1) {
+                const subVariations = currentNode.children.slice(1);
+                elements.push(
+                    <span key={`subvar-${currentNode.id}`} className="sub-variations">
+                        <VariationRenderer 
+                            variations={subVariations} 
+                            basePath={currentPath}
+                            depth={depth + 1}
+                            {...props} 
+                        />
                     </span>
                 );
             }
@@ -372,7 +387,7 @@ const AnalysisBoard = () => {
             }
         }
         
-        return moves;
+        return elements;
     };
 
     return (
@@ -380,7 +395,7 @@ const AnalysisBoard = () => {
             {variations.map((variationNode, index) => {
                 const variationPath = [...basePath, index + 1];
                 return (
-                    <div key={variationNode.id} className="variation-line">
+                    <div key={variationNode.id} className={`variation-line depth-${depth}`}>
                         ({renderVariationLine(variationNode, variationPath)})
                     </div>
                 );
