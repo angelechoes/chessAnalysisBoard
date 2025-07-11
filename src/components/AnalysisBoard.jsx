@@ -311,47 +311,17 @@ const AnalysisBoard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPath, getNode, navigateToPath]);
 
-  const MoveRenderer = ({ node, path, isVariation, parentNode, ...props }) => {
+  const MoveRenderer = ({ node, path, isVariation, showMoveNumber, ...props }) => {
     const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
-    
-    // A node's variations are its siblings. We get them from the parent.
-    const variations = parentNode ? parentNode.children.slice(1) : [];
-    
-    // Only render variations if this node is the first child of its parent (the main line move).
-    const isMainMoveOfGroup = parentNode ? parentNode.children[0].id === node.id : false;
-    
-    // Recursive function to render a full line of moves
-    const renderLine = (lineNode, linePath, isBranch) => {
-        if (!lineNode) return null;
-        
-        const lineIsSelected = JSON.stringify(linePath) === JSON.stringify(props.currentPath);
-        const moveNumber = Math.floor(lineNode.ply / 2) + 1;
-        const showMoveNumber = lineNode.ply % 2 === 0 || isBranch;
-
-        return (
-            <>
-                <span className="move-wrapper">
-                    {showMoveNumber && (
-                        <span className="move-number">
-                            {moveNumber}.{lineNode.ply % 2 !== 0 ? '..' : ''}
-                        </span>
-                    )}
-                    <span
-                        className={`move ${lineIsSelected ? 'selected-move' : ''}`}
-                        onClick={() => props.navigateToPath(linePath)}
-                        onContextMenu={(e) => props.handleContextMenu(e, linePath)}
-                    >
-                        {lineNode.san}
-                    </span>
-                </span>
-                {/* To render variations correctly, we need to find the parent of the next node. */}
-                {lineNode.children.length > 0 && renderLine(lineNode.children[0], [...linePath, 0], false)}
-            </>
-        )
-    }
+    const moveNumber = Math.floor(node.ply / 2) + 1;
 
     return (
-        <span className="move-group">
+        <span className="move-wrapper">
+            {showMoveNumber && (
+                <span className="move-number">
+                    {moveNumber}.{node.ply % 2 !== 0 ? '..' : ''}
+                </span>
+            )}
             <span
                 className={`move ${isSelected ? 'selected-move' : ''}`}
                 onClick={() => props.navigateToPath(path)}
@@ -359,23 +329,63 @@ const AnalysisBoard = () => {
             >
                 {node.san}
             </span>
-            
-            {isMainMoveOfGroup && variations.length > 0 && (
-                <span className="variations-inline">
-                    {variations.map((variationNode, index) => {
-                        // The path to a variation is the parent's path + its index (offset by 1)
-                        const variationPath = [...path.slice(0, -1), index + 1];
-                        return (
-                            <span key={variationNode.id} className="variation-inline">
-                                (
-                                    {renderLine(variationNode, variationPath, true)}
-                                )
-                            </span>
-                        );
-                    })}
-                </span>
-            )}
         </span>
+    );
+  };
+
+  const VariationRenderer = ({ variations, basePath, ...props }) => {
+    if (!variations || variations.length === 0) return null;
+
+    const renderVariationLine = (lineNode, linePath) => {
+        if (!lineNode) return null;
+        
+        const moves = [];
+        let currentNode = lineNode;
+        let currentPath = linePath;
+        
+        while (currentNode) {
+            const shouldShowMoveNumber = currentNode.ply % 2 === 0 || currentNode === lineNode;
+            moves.push(
+                <MoveRenderer 
+                    key={currentNode.id}
+                    node={currentNode} 
+                    path={currentPath} 
+                    isVariation={true}
+                    showMoveNumber={shouldShowMoveNumber}
+                    {...props} 
+                />
+            );
+            
+            if (currentNode.comment && currentNode.comment.trim()) {
+                moves.push(
+                    <span key={`comment-${currentNode.id}`} className="inline-comment">
+                        {` ${currentNode.comment.trim()}`}
+                    </span>
+                );
+            }
+            
+            if (currentNode.children.length > 0) {
+                currentPath = [...currentPath, 0];
+                currentNode = currentNode.children[0];
+            } else {
+                break;
+            }
+        }
+        
+        return moves;
+    };
+
+    return (
+        <div className="variations-block">
+            {variations.map((variationNode, index) => {
+                const variationPath = [...basePath, index + 1];
+                return (
+                    <div key={variationNode.id} className="variation-line">
+                        ({renderVariationLine(variationNode, variationPath)})
+                    </div>
+                );
+            })}
+        </div>
     );
   };
 
@@ -398,19 +408,26 @@ const AnalysisBoard = () => {
 
         const hasWhiteComment = white.node.comment && white.node.comment.length > 0;
         const hasBlackComment = black && black.node.comment && black.node.comment.length > 0;
+        const whiteHasVariations = white.parentNode && white.parentNode.children.length > 1;
+        const blackHasVariations = black && black.parentNode && black.parentNode.children.length > 1;
         
-        if (hasWhiteComment || hasBlackComment) {
-            // Render on separate lines if there are comments
+        if (hasWhiteComment || hasBlackComment || whiteHasVariations || blackHasVariations) {
+            // Render on separate lines if there are comments or variations
             rows.push(
                 <div key={`${i}-w`} className="move-row">
                     <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
                     <span className="move-pair">
-                        <MoveRenderer node={white.node} path={white.path} parentNode={white.parentNode} {...props} />
+                        <MoveRenderer node={white.node} path={white.path} showMoveNumber={false} {...props} />
                     </span>
                     <span className="move-pair empty-move">...</span>
                 </div>
             );
             if(hasWhiteComment) rows.push(<div key={`${i}-wc`} className="comment-row"><div className="comment">{white.node.comment}</div></div>);
+            if(whiteHasVariations) {
+                const whiteVariations = white.parentNode.children.slice(1);
+                const whiteBasePath = white.path.slice(0, -1);
+                rows.push(<div key={`${i}-wv`}><VariationRenderer variations={whiteVariations} basePath={whiteBasePath} {...props} /></div>);
+            }
 
             if(black) {
                 rows.push(
@@ -418,22 +435,27 @@ const AnalysisBoard = () => {
                         <span className="move-number"></span>
                         <span className="move-pair empty-move">...</span>
                         <span className="move-pair">
-                            <MoveRenderer node={black.node} path={black.path} parentNode={black.parentNode} {...props} />
+                            <MoveRenderer node={black.node} path={black.path} showMoveNumber={false} {...props} />
                         </span>
                     </div>
                 );
                 if(hasBlackComment) rows.push(<div key={`${i}-bc`} className="comment-row"><div className="comment">{black.node.comment}</div></div>);
+                if(blackHasVariations) {
+                    const blackVariations = black.parentNode.children.slice(1);
+                    const blackBasePath = black.path.slice(0, -1);
+                    rows.push(<div key={`${i}-bv`}><VariationRenderer variations={blackVariations} basePath={blackBasePath} {...props} /></div>);
+                }
             }
         } else {
-             // Render on the same line if no comments
+             // Render on the same line if no comments or variations
             rows.push(
                 <div key={i} className="move-row">
                     <span className="move-number">{Math.floor(white.node.ply / 2) + 1}.</span>
                     <span className="move-pair">
-                        <MoveRenderer node={white.node} path={white.path} parentNode={white.parentNode} {...props} />
+                        <MoveRenderer node={white.node} path={white.path} {...props} />
                     </span>
                     <span className="move-pair">
-                        {black && <MoveRenderer node={black.node} path={black.path} parentNode={black.parentNode} {...props} />}
+                        {black && <MoveRenderer node={black.node} path={black.path} {...props} />}
                     </span>
                 </div>
             );

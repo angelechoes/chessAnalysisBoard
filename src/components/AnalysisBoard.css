@@ -79,16 +79,37 @@
     background-color: #bde0ff;
 }
 
-.variations-inline {
-    margin-left: 6px;
-    color: #555;
-    font-weight: normal;
-    display: inline;
+.variations-block {
+    margin-top: 4px;
+    width: 100%;
 }
 
-.variation-inline {
-    margin-right: 6px;
-    display: inline;
+.variation-line {
+    display: block;
+    background-color: #f8f8f8;
+    padding: 6px 12px;
+    margin-bottom: 2px;
+    border-left: 3px solid #ddd;
+    border-radius: 3px;
+    color: #555;
+    font-weight: normal;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.variation-line .move {
+    font-weight: 500;
+    color: #666;
+}
+
+.variation-line .move-number {
+    color: #888;
+}
+
+.inline-comment {
+    color: #777;
+    font-style: italic;
+    margin-left: 4px;
 }
 
 .comment-row {
