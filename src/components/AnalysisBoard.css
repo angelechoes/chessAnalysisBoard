@@ -13,8 +13,8 @@
 }
 
 .move-history {
-  width: 30vw;
-  max-width: 300px;
+  width: 45vw;
+  max-width: 500px;
   border: 1px solid #ccc;
   border-radius: 5px;
   padding: 10px;
@@ -119,18 +119,19 @@
 }
 
 .sub-variations {
-    display: inline;
+    display: block;
+    margin-top: 4px;
 }
 
 .sub-variations .variations-block {
-    display: inline;
+    display: block;
     margin-top: 0;
 }
 
 .sub-variations .variation-line {
-    display: inline;
-    margin-bottom: 0;
-    margin-right: 8px;
+    display: block;
+    margin-bottom: 2px;
+    margin-left: 20px;
 }
 
 .inline-comment {

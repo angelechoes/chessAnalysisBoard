@@ -396,7 +396,7 @@ const AnalysisBoard = () => {
                 const variationPath = [...basePath, index + 1];
                 return (
                     <div key={variationNode.id} className={`variation-line depth-${depth}`}>
-                        ({renderVariationLine(variationNode, variationPath)})
+                        {renderVariationLine(variationNode, variationPath)}
                     </div>
                 );
             })}
@@ -485,7 +485,6 @@ const AnalysisBoard = () => {
         <div className="analysis-board">
           <Chessboard position={gameFen} onPieceDrop={onDrop} />
           <div className="comment-box">
-            <h3>Comment</h3>
             <textarea
               value={comment}
               onChange={handleCommentChange}
