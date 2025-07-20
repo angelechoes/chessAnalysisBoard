@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useImmer } from 'use-immer';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -30,6 +30,9 @@ const AnalysisBoard = () => {
   
   // State for the PGN text area
   const [pgnInput, setPgnInput] = useState('');
+  
+  // Ref for the moves list container to enable auto-scrolling
+  const movesListRef = useRef(null);
 
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
@@ -311,12 +314,45 @@ const AnalysisBoard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPath, getNode, navigateToPath]);
 
+  // Auto-scroll to keep the selected move centered
+  useEffect(() => {
+    if (currentPath.length > 0 && movesListRef.current) {
+      // Use setTimeout to ensure the DOM has updated after the move selection
+      setTimeout(() => {
+        const moveId = `move-${currentPath.join('-')}`;
+        console.log(`moveId: ${moveId}`);
+        const moveElement = document.getElementById(moveId);
+        console.log(`moveElement: ${moveElement}`);
+
+        if (moveElement && movesListRef.current) {
+          const container = movesListRef.current;
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = moveElement.getBoundingClientRect();
+          
+          // Calculate the relative position of the element within the container
+          const elementTop = elementRect.top - containerRect.top + container.scrollTop;
+          const elementHeight = elementRect.height;
+          const containerHeight = container.clientHeight;
+          
+          // Calculate scroll position to center the element
+          const scrollTop = elementTop - (containerHeight / 2) + (elementHeight / 2);
+          
+          container.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+    }
+  }, [currentPath]);
+
   const MoveRenderer = ({ node, path, isVariation, showMoveNumber, ...props }) => {
     const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
     const moveNumber = Math.floor(node.ply / 2) + 1;
+    const moveId = `move-${path.join('-')}`;
 
     return (
-        <span className="move-wrapper">
+        <span className="move-wrapper" id={moveId}>
             {showMoveNumber && (
                 <span className="move-number">
                     {moveNumber}.{node.ply % 2 !== 0 ? '..' : ''}
@@ -493,7 +529,7 @@ const AnalysisBoard = () => {
           </div>
         </div>
         <div className="move-history">
-          <div className="moves-list">
+          <div className="moves-list" ref={movesListRef}>
              <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
           </div>
           {currentNode.children.length > 1 && (
