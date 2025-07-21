@@ -300,10 +300,12 @@ const AnalysisBoard = () => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'ArrowLeft') {
+        event.preventDefault(); // Prevent default horizontal scrolling
         if (currentPath.length > 0) {
           navigateToPath(currentPath.slice(0, -1));
         }
       } else if (event.key === 'ArrowRight') {
+        event.preventDefault(); // Prevent default horizontal scrolling
         const node = getNode(currentPath);
         if (node.children.length > 0) {
           navigateToPath([...currentPath, 0]); // Go to main line
