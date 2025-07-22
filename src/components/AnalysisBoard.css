@@ -249,6 +249,120 @@
   background-color: #f0f0f0;
 }
 
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.settings-modal {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.settings-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-close:hover {
+  color: #333;
+}
+
+.settings-content {
+  padding: 20px;
+}
+
+.settings-section {
+  margin-bottom: 30px;
+}
+
+.settings-section h3 {
+  margin: 0 0 15px 0;
+  color: #444;
+  font-size: 16px;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+
+.shortcut-item label {
+  font-weight: 500;
+  color: #555;
+}
+
+.shortcut-item input {
+  width: 40px;
+  height: 30px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.shortcut-item input:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.board-orientation {
+  font-weight: 500;
+  color: #4a90e2;
+}
+
+.settings-footer {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+  margin-top: 20px;
+}
+
+.settings-footer p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
 .branch-selection {
     padding: 15px 0 0 0;
     border-top: 1px solid #eee;

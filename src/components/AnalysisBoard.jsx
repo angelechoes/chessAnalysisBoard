@@ -34,6 +34,17 @@ const AnalysisBoard = () => {
   // Ref for the moves list container to enable auto-scrolling
   const movesListRef = useRef(null);
 
+  // Board orientation state
+  const [boardOrientation, setBoardOrientation] = useState('white');
+
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [keyboardShortcuts, setKeyboardShortcuts] = useState({
+    flipBoard: 'f',
+    previousMove: 'k',
+    nextMove: 'j'
+  });
+
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
     let node = sourceTree;
@@ -299,12 +310,27 @@ const AnalysisBoard = () => {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'ArrowLeft') {
+      // Check for settings shortcut (Cmd+, or Ctrl+,)
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault();
+        setShowSettings(true);
+        return;
+      }
+
+      // Handle board flip
+      if (event.key.toLowerCase() === keyboardShortcuts.flipBoard.toLowerCase()) {
+        event.preventDefault();
+        setBoardOrientation(prev => prev === 'white' ? 'black' : 'white');
+        return;
+      }
+
+      // Handle move navigation
+      if (event.key.toLowerCase() === keyboardShortcuts.previousMove.toLowerCase() || event.key === 'ArrowLeft') {
         event.preventDefault(); // Prevent default horizontal scrolling
         if (currentPath.length > 0) {
           navigateToPath(currentPath.slice(0, -1));
         }
-      } else if (event.key === 'ArrowRight') {
+      } else if (event.key.toLowerCase() === keyboardShortcuts.nextMove.toLowerCase() || event.key === 'ArrowRight') {
         event.preventDefault(); // Prevent default horizontal scrolling
         const node = getNode(currentPath);
         if (node.children.length > 0) {
@@ -314,7 +340,7 @@ const AnalysisBoard = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPath, getNode, navigateToPath]);
+  }, [currentPath, getNode, navigateToPath, keyboardShortcuts, setBoardOrientation]);
 
   // Auto-scroll to keep the selected move centered
   useEffect(() => {
@@ -521,7 +547,11 @@ const AnalysisBoard = () => {
     <>
       <div className="analysis-board-container">
         <div className="analysis-board">
-          <Chessboard position={gameFen} onPieceDrop={onDrop} />
+          <Chessboard 
+            position={gameFen} 
+            onPieceDrop={onDrop} 
+            boardOrientation={boardOrientation}
+          />
           <div className="comment-box">
             <textarea
               value={comment}
@@ -562,6 +592,67 @@ const AnalysisBoard = () => {
         <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
           <div className="context-menu-item" onClick={handleDeleteMove}>Delete</div>
           <div className="context-menu-item" onClick={handlePromoteVariation}>Promote variation</div>
+        </div>
+      )}
+      {showSettings && (
+        <div className="settings-overlay" onClick={() => setShowSettings(false)}>
+          <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-header">
+              <h2>Settings</h2>
+              <button className="settings-close" onClick={() => setShowSettings(false)}>×</button>
+            </div>
+            <div className="settings-content">
+              <div className="settings-section">
+                <h3>Keyboard Shortcuts</h3>
+                <div className="shortcut-item">
+                  <label>Flip Board:</label>
+                  <input
+                    type="text"
+                    value={keyboardShortcuts.flipBoard}
+                    onChange={(e) => setKeyboardShortcuts(prev => ({
+                      ...prev,
+                      flipBoard: e.target.value.toLowerCase()
+                    }))}
+                    maxLength="1"
+                  />
+                </div>
+                <div className="shortcut-item">
+                  <label>Previous Move:</label>
+                  <input
+                    type="text"
+                    value={keyboardShortcuts.previousMove}
+                    onChange={(e) => setKeyboardShortcuts(prev => ({
+                      ...prev,
+                      previousMove: e.target.value.toLowerCase()
+                    }))}
+                    maxLength="1"
+                  />
+                </div>
+                <div className="shortcut-item">
+                  <label>Next Move:</label>
+                  <input
+                    type="text"
+                    value={keyboardShortcuts.nextMove}
+                    onChange={(e) => setKeyboardShortcuts(prev => ({
+                      ...prev,
+                      nextMove: e.target.value.toLowerCase()
+                    }))}
+                    maxLength="1"
+                  />
+                </div>
+              </div>
+              <div className="settings-section">
+                <h3>Board Settings</h3>
+                <div className="shortcut-item">
+                  <label>Current Orientation:</label>
+                  <span className="board-orientation">{boardOrientation === 'white' ? 'White' : 'Black'}</span>
+                </div>
+              </div>
+              <div className="settings-footer">
+                <p><strong>Tip:</strong> Press Cmd+, (or Ctrl+,) to open settings</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </>
