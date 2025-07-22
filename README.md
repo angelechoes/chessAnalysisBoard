@@ -257,9 +257,12 @@ fn main() {
 
 | Action | Default Key | Alternative | Description |
 |--------|-------------|-------------|-------------|
-| Previous Move | `k` | `←` | Navigate to previous move |
 | Next Move | `j` | `→` | Navigate to next move |
+| Previous Move | `k` | `←` | Navigate to previous move |
+| Jump to Start | `↑` | - | Jump to beginning of game |
+| Jump to End | `↓` | - | Jump to end of main line |
 | Flip Board | `f` | - | Toggle board orientation |
+| Toggle FEN Input | `Shift+F` | - | Show/hide FEN input section |
 | Open Settings | `Cmd+,` / `Ctrl+,` | - | Open settings panel |
 | Close Settings | `Esc` | Click outside | Close settings panel |
 
@@ -268,10 +271,10 @@ fn main() {
 The component supports custom starting positions via FEN (Forsyth-Edwards Notation):
 
 ### User Interface
+- **Toggle Display**: Press `Shift+F` (or customize in settings) to show/hide the FEN input section
 - **FEN Input**: Paste FEN notation to set custom starting positions
-- **Current Position Display**: Shows the currently active starting FEN
-- **Reset Button**: Quick reset to standard starting position
 - **Validation**: Invalid FEN strings are rejected with user feedback
+- **Optional Display**: The FEN input section is hidden by default to keep the UI clean
 
 ### Programmatic Control
 

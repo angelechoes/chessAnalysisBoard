@@ -239,21 +239,7 @@
   min-height: 45px;
 }
 
-.current-fen {
-  font-size: 14px;
-  color: #555;
-  word-break: break-all;
-  background-color: #f8f8f8;
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
 
-.fen-string {
-  font-family: monospace;
-  font-size: 13px;
-  color: #333;
-}
 
 .pgn-display {
   width: 90vw;
@@ -421,6 +407,20 @@
   outline: none;
   border-color: #4a90e2;
   box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.shortcut-display {
+  display: inline-block;
+  width: 70px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  color: #666;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .board-orientation {

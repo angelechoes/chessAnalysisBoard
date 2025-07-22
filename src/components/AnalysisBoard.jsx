@@ -51,9 +51,14 @@ const AnalysisBoard = ({
   const [showSettings, setShowSettings] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
     flipBoard: 'f',
+    nextMove: 'j',
     previousMove: 'k',
-    nextMove: 'j'
+    jumpToStart: 'ArrowUp',
+    jumpToEnd: 'ArrowDown',
+    toggleFen: 'F' // Shift+F
   });
+
+  const [showFenInput, setShowFenInput] = useState(false);
 
   // Use external settings if provided
   const effectiveSettings = externalSettings || keyboardShortcuts;
@@ -292,19 +297,7 @@ const AnalysisBoard = ({
     }
   };
 
-  const handleResetToStarting = () => {
-    const defaultFen = new Chess().fen();
-    setCurrentStartingFen(defaultFen);
-    setTree({
-      id: 'root',
-      san: null,
-      comment: '',
-      fen: defaultFen,
-      ply: -1,
-      children: [],
-    });
-    setCurrentPath([]);
-  };
+
 
   const [contextMenu, setContextMenu] = useState(null);
 
@@ -420,10 +413,38 @@ const AnalysisBoard = ({
       // Don't handle other shortcuts when settings is open
       if (effectiveShowSettings) return;
 
-      // Handle board flip
-      if (event.key.toLowerCase() === effectiveSettings.flipBoard.toLowerCase()) {
+      // Handle FEN input toggle (Shift+F by default)
+      if (event.key === effectiveSettings.toggleFen && event.shiftKey) {
+        event.preventDefault();
+        setShowFenInput(prev => !prev);
+        return;
+      }
+
+      // Handle board flip (only if not shift+f)
+      if (event.key.toLowerCase() === effectiveSettings.flipBoard.toLowerCase() && !event.shiftKey) {
         event.preventDefault();
         setBoardOrientation(prev => prev === 'white' ? 'black' : 'white');
+        return;
+      }
+
+      // Handle jump to start
+      if (event.key === effectiveSettings.jumpToStart) {
+        event.preventDefault();
+        navigateToPath([]);
+        return;
+      }
+
+      // Handle jump to end
+      if (event.key === effectiveSettings.jumpToEnd) {
+        event.preventDefault();
+        // Find the end of the main line
+        let currentNode = tree;
+        let endPath = [];
+        while (currentNode.children.length > 0) {
+          currentNode = currentNode.children[0]; // Always follow main line
+          endPath.push(0);
+        }
+        navigateToPath(endPath);
         return;
       }
 
@@ -679,25 +700,23 @@ const AnalysisBoard = ({
           )}
         </div>
       </div>
-      <div className="fen-display">
-        <div className="fen-header">
-          <h3>Starting Position (FEN)</h3>
-          <button onClick={handleResetToStarting} className="fen-button">Reset to Default</button>
+      {showFenInput && (
+        <div className="fen-display">
+          <div className="fen-header">
+            <h3>Starting Position (FEN)</h3>
+          </div>
+          <div className="fen-input-container">
+            <textarea 
+              value={fenInput}
+              onChange={handleFenInputChange}
+              className="fen-textarea"
+              placeholder="Paste FEN notation here to set a custom starting position..."
+              rows="2"
+            />
+            <button onClick={handleLoadFen} className="fen-button load-fen-button">Load FEN</button>
+          </div>
         </div>
-        <div className="fen-input-container">
-          <textarea 
-            value={fenInput}
-            onChange={handleFenInputChange}
-            className="fen-textarea"
-            placeholder="Paste FEN notation here to set a custom starting position..."
-            rows="2"
-          />
-          <button onClick={handleLoadFen} className="fen-button load-fen-button">Load FEN</button>
-        </div>
-        <div className="current-fen">
-          <strong>Current:</strong> <span className="fen-string">{currentStartingFen}</span>
-        </div>
-      </div>
+      )}
       <div className="pgn-display">
         <div className="pgn-header">
             <h3>Live PGN</h3>
@@ -739,6 +758,18 @@ const AnalysisBoard = ({
                   />
                 </div>
                 <div className="shortcut-item">
+                  <label>Next Move:</label>
+                  <input
+                    type="text"
+                    value={effectiveSettings.nextMove}
+                    onChange={(e) => handleSettingsChange({
+                      ...effectiveSettings,
+                      nextMove: e.target.value.toLowerCase()
+                    })}
+                    maxLength="1"
+                  />
+                </div>
+                <div className="shortcut-item">
                   <label>Previous Move:</label>
                   <input
                     type="text"
@@ -751,16 +782,38 @@ const AnalysisBoard = ({
                   />
                 </div>
                 <div className="shortcut-item">
-                  <label>Next Move:</label>
+                  <label>Jump to Start:</label>
                   <input
                     type="text"
-                    value={effectiveSettings.nextMove}
-                    onChange={(e) => handleSettingsChange({
-                      ...effectiveSettings,
-                      nextMove: e.target.value.toLowerCase()
-                    })}
+                    value={effectiveSettings.jumpToStart === 'ArrowUp' ? '↑' : effectiveSettings.jumpToStart}
+                    onChange={(e) => {
+                      const value = e.target.value === '↑' ? 'ArrowUp' : e.target.value;
+                      handleSettingsChange({
+                        ...effectiveSettings,
+                        jumpToStart: value
+                      });
+                    }}
                     maxLength="1"
                   />
+                </div>
+                <div className="shortcut-item">
+                  <label>Jump to End:</label>
+                  <input
+                    type="text"
+                    value={effectiveSettings.jumpToEnd === 'ArrowDown' ? '↓' : effectiveSettings.jumpToEnd}
+                    onChange={(e) => {
+                      const value = e.target.value === '↓' ? 'ArrowDown' : e.target.value;
+                      handleSettingsChange({
+                        ...effectiveSettings,
+                        jumpToEnd: value
+                      });
+                    }}
+                    maxLength="1"
+                  />
+                </div>
+                <div className="shortcut-item">
+                  <label>Toggle FEN Input:</label>
+                  <span className="shortcut-display">Shift+F</span>
                 </div>
               </div>
               <div className="settings-section">
