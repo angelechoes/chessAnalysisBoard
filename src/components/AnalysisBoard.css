@@ -178,6 +178,83 @@
   font-size: 1em;
 }
 
+.fen-display {
+  width: 90vw;
+  max-width: 940px;
+  margin: 20px auto;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  background-color: #f0f8ff;
+}
+
+.fen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.fen-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.fen-input-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: flex-start;
+}
+
+.fen-textarea {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 45px;
+}
+
+.fen-button {
+  background-color: #4a90e2;
+  color: white;
+  border: 1px solid #4a90e2;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fen-button:hover {
+  background-color: #357abd;
+  border-color: #357abd;
+}
+
+.load-fen-button {
+  align-self: stretch;
+  min-height: 45px;
+}
+
+.current-fen {
+  font-size: 14px;
+  color: #555;
+  word-break: break-all;
+  background-color: #f8f8f8;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.fen-string {
+  font-family: monospace;
+  font-size: 13px;
+  color: #333;
+}
+
 .pgn-display {
   width: 90vw;
   max-width: 940px; /* Match the board + moves width approx */

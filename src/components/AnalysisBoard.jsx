@@ -12,14 +12,19 @@ const AnalysisBoard = ({
   externalSettings = null,
   onSettingsChange = null,
   showExternalSettings = false,
-  onToggleSettings = null 
+  onToggleSettings = null,
+  startingFen = null
 }) => {
+  // FEN state for starting position
+  const [fenInput, setFenInput] = useState('');
+  const [currentStartingFen, setCurrentStartingFen] = useState(startingFen || new Chess().fen());
+
   // The game tree now holds the entire game state
   const [tree, setTree] = useImmer({
     id: 'root',
     san: null,
     comment: '',
-    fen: new Chess().fen(),
+    fen: currentStartingFen,
     ply: -1,
     children: [],
   });
@@ -71,6 +76,23 @@ const AnalysisBoard = ({
     }
   };
 
+  // Update starting FEN when prop changes
+  useEffect(() => {
+    if (startingFen && startingFen !== currentStartingFen) {
+      setCurrentStartingFen(startingFen);
+      // Reset the tree with the new starting position
+      setTree({
+        id: 'root',
+        san: null,
+        comment: '',
+        fen: startingFen,
+        ply: -1,
+        children: [],
+      });
+      setCurrentPath([]);
+    }
+  }, [startingFen, currentStartingFen, setTree]);
+
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
     let node = sourceTree;
@@ -82,14 +104,14 @@ const AnalysisBoard = ({
 
   // Get the FEN for a given path by replaying moves
   const getFenForPath = useCallback((path) => {
-    const game = new Chess();
+    const game = new Chess(currentStartingFen);
     let currentNode = tree;
     for (const index of path) {
         currentNode = currentNode.children[index];
         game.move(currentNode.san);
     }
     return game.fen();
-  }, [tree]);
+  }, [tree, currentStartingFen]);
 
   const currentNode = getNode(currentPath);
   const gameFen = getFenForPath(currentPath);
@@ -173,7 +195,7 @@ const AnalysisBoard = ({
         draft.id = 'root';
         draft.san = null;
         draft.comment = '';
-        draft.fen = new Chess().fen();
+        draft.fen = currentStartingFen;
         draft.ply = -1;
         draft.children = [];
         
@@ -237,6 +259,51 @@ const AnalysisBoard = ({
     }, (err) => {
         console.error('Could not copy PGN: ', err);
     });
+  };
+
+  const handleFenInputChange = (event) => {
+    setFenInput(event.target.value);
+  };
+
+  const handleLoadFen = () => {
+    try {
+      // Validate the FEN
+      const chess = new Chess(fenInput);
+      const newFen = chess.fen();
+      
+      setCurrentStartingFen(newFen);
+      
+      // Reset the tree with the new starting position
+      setTree({
+        id: 'root',
+        san: null,
+        comment: '',
+        fen: newFen,
+        ply: -1,
+        children: [],
+      });
+      
+      setCurrentPath([]);
+      setFenInput(''); // Clear the input after successful load
+      
+    } catch (error) {
+      console.error("Invalid FEN:", error);
+      alert("The FEN is invalid and could not be loaded.");
+    }
+  };
+
+  const handleResetToStarting = () => {
+    const defaultFen = new Chess().fen();
+    setCurrentStartingFen(defaultFen);
+    setTree({
+      id: 'root',
+      san: null,
+      comment: '',
+      fen: defaultFen,
+      ply: -1,
+      children: [],
+    });
+    setCurrentPath([]);
   };
 
   const [contextMenu, setContextMenu] = useState(null);
@@ -610,6 +677,25 @@ const AnalysisBoard = ({
               ))}
             </div>
           )}
+        </div>
+      </div>
+      <div className="fen-display">
+        <div className="fen-header">
+          <h3>Starting Position (FEN)</h3>
+          <button onClick={handleResetToStarting} className="fen-button">Reset to Default</button>
+        </div>
+        <div className="fen-input-container">
+          <textarea 
+            value={fenInput}
+            onChange={handleFenInputChange}
+            className="fen-textarea"
+            placeholder="Paste FEN notation here to set a custom starting position..."
+            rows="2"
+          />
+          <button onClick={handleLoadFen} className="fen-button load-fen-button">Load FEN</button>
+        </div>
+        <div className="current-fen">
+          <strong>Current:</strong> <span className="fen-string">{currentStartingFen}</span>
         </div>
       </div>
       <div className="pgn-display">

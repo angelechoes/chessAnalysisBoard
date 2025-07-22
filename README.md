@@ -241,6 +241,7 @@ fn main() {
 | `onSettingsChange` | `Function \| null` | `null` | Callback when settings change |
 | `showExternalSettings` | `boolean` | `false` | Whether to show settings modal externally |
 | `onToggleSettings` | `Function \| null` | `null` | Callback to toggle settings modal |
+| `startingFen` | `string \| null` | `null` | Custom starting position in FEN notation |
 
 ### Settings Object Structure
 
@@ -262,6 +263,30 @@ fn main() {
 | Open Settings | `Cmd+,` / `Ctrl+,` | - | Open settings panel |
 | Close Settings | `Esc` | Click outside | Close settings panel |
 
+## FEN Support
+
+The component supports custom starting positions via FEN (Forsyth-Edwards Notation):
+
+### User Interface
+- **FEN Input**: Paste FEN notation to set custom starting positions
+- **Current Position Display**: Shows the currently active starting FEN
+- **Reset Button**: Quick reset to standard starting position
+- **Validation**: Invalid FEN strings are rejected with user feedback
+
+### Programmatic Control
+
+```jsx
+// Set a custom starting position programmatically
+<AnalysisBoard 
+  startingFen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+/>
+
+// Example: King and Pawn endgame
+<AnalysisBoard 
+  startingFen="8/8/8/8/8/8/4K1k1/8 w - - 0 1"
+/>
+```
+
 ## PGN Support
 
 The component supports full PGN import and export with:
@@ -269,6 +294,7 @@ The component supports full PGN import and export with:
 - **Variations**: Nested variations and sub-variations  
 - **Headers**: Standard PGN headers
 - **Live updates**: PGN updates as you play/navigate
+- **Custom starting positions**: PGNs work with any starting FEN
 
 ### Example PGN with Variations
 
