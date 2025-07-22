@@ -8,7 +8,12 @@ import './AnalysisBoard.css';
 // A unique ID for new nodes
 let nextId = 0;
 
-const AnalysisBoard = () => {
+const AnalysisBoard = ({ 
+  externalSettings = null,
+  onSettingsChange = null,
+  showExternalSettings = false,
+  onToggleSettings = null 
+}) => {
   // The game tree now holds the entire game state
   const [tree, setTree] = useImmer({
     id: 'root',
@@ -37,13 +42,34 @@ const AnalysisBoard = () => {
   // Board orientation state
   const [boardOrientation, setBoardOrientation] = useState('white');
 
-  // Settings state
+  // Settings state - use external settings if provided
   const [showSettings, setShowSettings] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState({
     flipBoard: 'f',
     previousMove: 'k',
     nextMove: 'j'
   });
+
+  // Use external settings if provided
+  const effectiveSettings = externalSettings || keyboardShortcuts;
+  const effectiveShowSettings = showExternalSettings || showSettings;
+
+  // Handle settings changes
+  const handleSettingsChange = (newSettings) => {
+    if (onSettingsChange) {
+      onSettingsChange(newSettings);
+    } else {
+      setKeyboardShortcuts(newSettings);
+    }
+  };
+
+  const handleToggleSettings = (show) => {
+    if (onToggleSettings) {
+      onToggleSettings(show);
+    } else {
+      setShowSettings(show);
+    }
+  };
 
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
@@ -310,27 +336,37 @@ const AnalysisBoard = () => {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Check for settings shortcut (Cmd+, or Ctrl+,)
-      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+      // Handle Escape key to close settings
+      if (event.key === 'Escape' && effectiveShowSettings) {
         event.preventDefault();
-        setShowSettings(true);
+        handleToggleSettings(false);
         return;
       }
 
+      // Check for settings shortcut (Cmd+, or Ctrl+,)
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault();
+        handleToggleSettings(true);
+        return;
+      }
+
+      // Don't handle other shortcuts when settings is open
+      if (effectiveShowSettings) return;
+
       // Handle board flip
-      if (event.key.toLowerCase() === keyboardShortcuts.flipBoard.toLowerCase()) {
+      if (event.key.toLowerCase() === effectiveSettings.flipBoard.toLowerCase()) {
         event.preventDefault();
         setBoardOrientation(prev => prev === 'white' ? 'black' : 'white');
         return;
       }
 
       // Handle move navigation
-      if (event.key.toLowerCase() === keyboardShortcuts.previousMove.toLowerCase() || event.key === 'ArrowLeft') {
+      if (event.key.toLowerCase() === effectiveSettings.previousMove.toLowerCase() || event.key === 'ArrowLeft') {
         event.preventDefault(); // Prevent default horizontal scrolling
         if (currentPath.length > 0) {
           navigateToPath(currentPath.slice(0, -1));
         }
-      } else if (event.key.toLowerCase() === keyboardShortcuts.nextMove.toLowerCase() || event.key === 'ArrowRight') {
+      } else if (event.key.toLowerCase() === effectiveSettings.nextMove.toLowerCase() || event.key === 'ArrowRight') {
         event.preventDefault(); // Prevent default horizontal scrolling
         const node = getNode(currentPath);
         if (node.children.length > 0) {
@@ -340,7 +376,7 @@ const AnalysisBoard = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPath, getNode, navigateToPath, keyboardShortcuts, setBoardOrientation]);
+      }, [currentPath, getNode, navigateToPath, effectiveSettings, setBoardOrientation, effectiveShowSettings, handleToggleSettings]);
 
   // Auto-scroll to keep the selected move centered
   useEffect(() => {
@@ -594,12 +630,12 @@ const AnalysisBoard = () => {
           <div className="context-menu-item" onClick={handlePromoteVariation}>Promote variation</div>
         </div>
       )}
-      {showSettings && (
-        <div className="settings-overlay" onClick={() => setShowSettings(false)}>
+      {effectiveShowSettings && (
+        <div className="settings-overlay" onClick={() => handleToggleSettings(false)}>
           <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
             <div className="settings-header">
               <h2>Settings</h2>
-              <button className="settings-close" onClick={() => setShowSettings(false)}>×</button>
+              <button className="settings-close" onClick={() => handleToggleSettings(false)}>×</button>
             </div>
             <div className="settings-content">
               <div className="settings-section">
@@ -608,11 +644,11 @@ const AnalysisBoard = () => {
                   <label>Flip Board:</label>
                   <input
                     type="text"
-                    value={keyboardShortcuts.flipBoard}
-                    onChange={(e) => setKeyboardShortcuts(prev => ({
-                      ...prev,
+                    value={effectiveSettings.flipBoard}
+                    onChange={(e) => handleSettingsChange({
+                      ...effectiveSettings,
                       flipBoard: e.target.value.toLowerCase()
-                    }))}
+                    })}
                     maxLength="1"
                   />
                 </div>
@@ -620,11 +656,11 @@ const AnalysisBoard = () => {
                   <label>Previous Move:</label>
                   <input
                     type="text"
-                    value={keyboardShortcuts.previousMove}
-                    onChange={(e) => setKeyboardShortcuts(prev => ({
-                      ...prev,
+                    value={effectiveSettings.previousMove}
+                    onChange={(e) => handleSettingsChange({
+                      ...effectiveSettings,
                       previousMove: e.target.value.toLowerCase()
-                    }))}
+                    })}
                     maxLength="1"
                   />
                 </div>
@@ -632,11 +668,11 @@ const AnalysisBoard = () => {
                   <label>Next Move:</label>
                   <input
                     type="text"
-                    value={keyboardShortcuts.nextMove}
-                    onChange={(e) => setKeyboardShortcuts(prev => ({
-                      ...prev,
+                    value={effectiveSettings.nextMove}
+                    onChange={(e) => handleSettingsChange({
+                      ...effectiveSettings,
                       nextMove: e.target.value.toLowerCase()
-                    }))}
+                    })}
                     maxLength="1"
                   />
                 </div>
