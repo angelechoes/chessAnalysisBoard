@@ -59,6 +59,7 @@ const AnalysisBoard = ({
   });
 
   const [showFenInput, setShowFenInput] = useState(false);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
   // Use external settings if provided
   const effectiveSettings = externalSettings || keyboardShortcuts;
@@ -468,13 +469,14 @@ const AnalysisBoard = ({
 
   // Auto-scroll to keep the selected move centered
   useEffect(() => {
-    if (currentPath.length > 0 && movesListRef.current) {
-      // Use setTimeout to ensure the DOM has updated after the move selection
-      setTimeout(() => {
+    if (!autoScrollEnabled || !movesListRef.current) return;
+
+    // Use setTimeout to ensure the DOM has updated after the move selection
+    setTimeout(() => {
+      if (currentPath.length > 0) {
+        // Scroll to selected move
         const moveId = `move-${currentPath.join('-')}`;
-        console.log(`moveId: ${moveId}`);
         const moveElement = document.getElementById(moveId);
-        console.log(`moveElement: ${moveElement}`);
 
         if (moveElement && movesListRef.current) {
           const container = movesListRef.current;
@@ -494,9 +496,15 @@ const AnalysisBoard = ({
             behavior: 'smooth'
           });
         }
-      }, 50);
-    }
-  }, [currentPath]);
+      } else {
+        // Jump to start - scroll to top
+        movesListRef.current.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+    }, 50);
+  }, [currentPath, autoScrollEnabled]);
 
   const MoveRenderer = ({ node, path, isVariation, showMoveNumber, ...props }) => {
     const isSelected = JSON.stringify(path) === JSON.stringify(props.currentPath);
@@ -821,6 +829,18 @@ const AnalysisBoard = ({
                 <div className="shortcut-item">
                   <label>Current Orientation:</label>
                   <span className="board-orientation">{boardOrientation === 'white' ? 'White' : 'Black'}</span>
+                </div>
+              </div>
+              <div className="settings-section">
+                <h3>UI Settings</h3>
+                <div className="shortcut-item">
+                  <label>Auto-scroll to keep selected move in view:</label>
+                  <input
+                    type="checkbox"
+                    checked={autoScrollEnabled}
+                    onChange={(e) => setAutoScrollEnabled(e.target.checked)}
+                    className="checkbox-input"
+                  />
                 </div>
               </div>
               <div className="settings-footer">

@@ -266,6 +266,16 @@ fn main() {
 | Open Settings | `Cmd+,` / `Ctrl+,` | - | Open settings panel |
 | Close Settings | `Esc` | Click outside | Close settings panel |
 
+### Customizable Settings
+
+All keyboard shortcuts and UI behavior can be customized via the settings panel:
+
+- **Access**: Press `Cmd+,` (or `Ctrl+,`) to open settings
+- **Keyboard Shortcuts**: Change any keyboard shortcut to your preference
+- **Board Orientation**: View current board orientation
+- **Auto-scroll**: Toggle automatic scrolling to keep selected move in view (default: enabled)
+- **Close**: Press `Esc` or click outside to close
+
 ## FEN Support
 
 The component supports custom starting positions via FEN (Forsyth-Edwards Notation):
