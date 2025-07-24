@@ -3,6 +3,7 @@ import { useImmer } from 'use-immer';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { parse } from '@mliebelt/pgn-parser';
+import { DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import './AnalysisBoard.css';
 
 // A unique ID for new nodes
@@ -260,11 +261,16 @@ const AnalysisBoard = ({
     }
   };
   
+  const [copyStatus, setCopyStatus] = useState('');
+
   const handleCopyPgn = () => {
     navigator.clipboard.writeText(pgnInput).then(() => {
-        alert("PGN copied to clipboard!");
+        setCopyStatus('Copied!');
+        setTimeout(() => setCopyStatus(''), 2000);
     }, (err) => {
         console.error('Could not copy PGN: ', err);
+        setCopyStatus('Failed to copy');
+        setTimeout(() => setCopyStatus(''), 2000);
     });
   };
 
@@ -393,25 +399,49 @@ const AnalysisBoard = ({
 
   useEffect(() => {
     const pgnString = generatePgnRecursive(tree);
-    const fullPgn = pgnString.trim() + ' *';
+    
+    // Check if we need to include the FEN header (when not starting from standard position)
+    const standardStartingFen = new Chess().fen();
+    let fullPgn = '';
+    
+    if (currentStartingFen !== standardStartingFen) {
+      fullPgn = `[FEN "${currentStartingFen}"]\n\n`;
+    }
+    
+    fullPgn += pgnString.trim();
     setPgnInput(fullPgn);
     
     // Notify parent component of PGN changes
     if (onPgnChange) {
       onPgnChange(fullPgn);
     }
-  }, [tree, generatePgnRecursive, onPgnChange]);
+  }, [tree, generatePgnRecursive, onPgnChange, currentStartingFen]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Handle Escape key to close settings
-      if (event.key === 'Escape' && effectiveShowSettings) {
+      // Check if user is typing in an input field (except for Escape and settings shortcut)
+      const isTypingInInput = event.target.tagName === 'INPUT' || 
+                             event.target.tagName === 'TEXTAREA' || 
+                             event.target.contentEditable === 'true';
+
+      // Handle Escape key
+      if (event.key === 'Escape') {
         event.preventDefault();
-        handleToggleSettings(false);
-        return;
+        
+        // If settings is open, close it
+        if (effectiveShowSettings) {
+          handleToggleSettings(false);
+          return;
+        }
+        
+        // If user is typing in an input field, defocus it
+        if (isTypingInInput) {
+          event.target.blur();
+          return;
+        }
       }
 
-      // Check for settings shortcut (Cmd+, or Ctrl+,)
+      // Check for settings shortcut (Cmd+, or Ctrl+,) - should work even when typing
       if ((event.metaKey || event.ctrlKey) && event.key === ',') {
         event.preventDefault();
         handleToggleSettings(true);
@@ -420,6 +450,9 @@ const AnalysisBoard = ({
 
       // Don't handle other shortcuts when settings is open
       if (effectiveShowSettings) return;
+
+      // Don't handle shortcuts when user is typing in input fields
+      if (isTypingInInput) return;
 
       // Handle FEN input toggle (Shift+F by default)
       if (event.key === effectiveSettings.toggleFen && event.shiftKey) {
@@ -735,14 +768,23 @@ const AnalysisBoard = ({
       <div className="pgn-display">
         <div className="pgn-header">
             <h3>Live PGN</h3>
-            <button onClick={handleCopyPgn} className="pgn-button">Copy</button>
         </div>
-        <textarea 
-            value={pgnInput}
-            onChange={handlePgnInputChange}
-            className="pgn-textarea"
-        />
-        <button onClick={handleLoadPgn} className="pgn-button load-pgn-button">Load PGN from Text</button>
+        <div className="pgn-textarea-container">
+          <textarea 
+              value={pgnInput}
+              onChange={handlePgnInputChange}
+              className="pgn-textarea"
+          />
+          <button 
+            onClick={handleCopyPgn} 
+            className="pgn-copy-icon"
+            title="Copy PGN"
+          >
+            <DocumentDuplicateIcon className="copy-icon-svg" />
+          </button>
+          {copyStatus && <div className="copy-status">{copyStatus}</div>}
+        </div>
+        <button onClick={handleLoadPgn} className="pgn-button load-pgn-button">Load PGN</button>
       </div>
       {contextMenu && (
         <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>

@@ -262,16 +262,69 @@
   margin: 0;
 }
 
+.pgn-textarea-container {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
 .pgn-textarea {
     width: 100%;
     box-sizing: border-box;
     min-height: 120px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 8px;
+    padding: 8px 40px 8px 8px; /* Add right padding for the copy button */
     font-family: monospace;
     font-size: 14px;
     resize: vertical;
+}
+
+.pgn-copy-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.2s, background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pgn-copy-icon:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.copy-icon-svg {
+  width: 16px;
+  height: 16px;
+  color: #666;
+}
+
+.copy-status {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  background-color: #4caf50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-5px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-5px); }
 }
 
 .pgn-button {
