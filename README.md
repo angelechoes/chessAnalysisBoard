@@ -48,6 +48,34 @@ function App() {
 export default App;
 ```
 
+### Accessing Generated PGN
+
+The component can notify your app whenever the PGN changes:
+
+```jsx
+import React, { useState } from 'react';
+import AnalysisBoard from './components/AnalysisBoard';
+
+function App() {
+  const [currentPgn, setCurrentPgn] = useState('');
+
+  const handlePgnChange = (newPgn) => {
+    console.log('PGN updated:', newPgn);
+    setCurrentPgn(newPgn);
+    
+    // Save to file, send to server, etc.
+    // In Tauri: invoke('save_pgn', { pgn: newPgn });
+  };
+
+  return (
+    <div>
+      <AnalysisBoard onPgnChange={handlePgnChange} />
+      <div>Current PGN: {currentPgn}</div>
+    </div>
+  );
+}
+```
+
 ### With External Settings (Recommended for Apps)
 
 ```jsx

@@ -13,7 +13,8 @@ const AnalysisBoard = ({
   onSettingsChange = null,
   showExternalSettings = false,
   onToggleSettings = null,
-  startingFen = null
+  startingFen = null,
+  onPgnChange = null
 }) => {
   // FEN state for starting position
   const [fenInput, setFenInput] = useState('');
@@ -392,8 +393,14 @@ const AnalysisBoard = ({
 
   useEffect(() => {
     const pgnString = generatePgnRecursive(tree);
-    setPgnInput(pgnString.trim() + ' *');
-  }, [tree, generatePgnRecursive]);
+    const fullPgn = pgnString.trim() + ' *';
+    setPgnInput(fullPgn);
+    
+    // Notify parent component of PGN changes
+    if (onPgnChange) {
+      onPgnChange(fullPgn);
+    }
+  }, [tree, generatePgnRecursive, onPgnChange]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
