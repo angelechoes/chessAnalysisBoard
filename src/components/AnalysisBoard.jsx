@@ -15,7 +15,9 @@ const AnalysisBoard = ({
   showExternalSettings = false,
   onToggleSettings = null,
   startingFen = null,
-  onPgnChange = null
+  onPgnChange = null,
+  enableFenInput = true,
+  enablePgnBox = true
 }) => {
   // FEN state for starting position
   const [fenInput, setFenInput] = useState('');
@@ -454,8 +456,8 @@ const AnalysisBoard = ({
       // Don't handle shortcuts when user is typing in input fields
       if (isTypingInInput) return;
 
-      // Handle FEN input toggle (Shift+F by default)
-      if (event.key === effectiveSettings.toggleFen && event.shiftKey) {
+      // Handle FEN input toggle (Shift+F by default) - only if FEN input is enabled
+      if (enableFenInput && event.key === effectiveSettings.toggleFen && event.shiftKey) {
         event.preventDefault();
         setShowFenInput(prev => !prev);
         return;
@@ -748,7 +750,7 @@ const AnalysisBoard = ({
           )}
         </div>
       </div>
-      {showFenInput && (
+      {enableFenInput && showFenInput && (
         <div className="fen-display">
           <div className="fen-header">
             <h3>Starting Position (FEN)</h3>
@@ -765,27 +767,29 @@ const AnalysisBoard = ({
           </div>
         </div>
       )}
-      <div className="pgn-display">
-        <div className="pgn-header">
-            <h3>Live PGN</h3>
+      {enablePgnBox && (
+        <div className="pgn-display">
+          <div className="pgn-header">
+              <h3>Live PGN</h3>
+          </div>
+          <div className="pgn-textarea-container">
+            <textarea 
+                value={pgnInput}
+                onChange={handlePgnInputChange}
+                className="pgn-textarea"
+            />
+            <button 
+              onClick={handleCopyPgn} 
+              className="pgn-copy-icon"
+              title="Copy PGN"
+            >
+              <DocumentDuplicateIcon className="copy-icon-svg" />
+            </button>
+            {copyStatus && <div className="copy-status">{copyStatus}</div>}
+          </div>
+          <button onClick={handleLoadPgn} className="pgn-button load-pgn-button">Load PGN</button>
         </div>
-        <div className="pgn-textarea-container">
-          <textarea 
-              value={pgnInput}
-              onChange={handlePgnInputChange}
-              className="pgn-textarea"
-          />
-          <button 
-            onClick={handleCopyPgn} 
-            className="pgn-copy-icon"
-            title="Copy PGN"
-          >
-            <DocumentDuplicateIcon className="copy-icon-svg" />
-          </button>
-          {copyStatus && <div className="copy-status">{copyStatus}</div>}
-        </div>
-        <button onClick={handleLoadPgn} className="pgn-button load-pgn-button">Load PGN</button>
-      </div>
+      )}
       {contextMenu && (
         <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
           <div className="context-menu-item" onClick={handleDeleteMove}>Delete</div>
@@ -868,10 +872,12 @@ const AnalysisBoard = ({
                     maxLength="1"
                   />
                 </div>
-                <div className="shortcut-item">
-                  <label>Toggle FEN Input:</label>
-                  <span className="shortcut-display">Shift+F</span>
-                </div>
+                {enableFenInput && (
+                  <div className="shortcut-item">
+                    <label>Toggle FEN Input:</label>
+                    <span className="shortcut-display">Shift+F</span>
+                  </div>
+                )}
               </div>
               <div className="settings-section">
                 <h3>Board Settings</h3>

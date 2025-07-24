@@ -76,6 +76,43 @@ function App() {
 }
 ```
 
+### Desktop App Integration (Tauri)
+
+For desktop applications, you can hide the PGN box and handle saving externally:
+
+```jsx
+import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/tauri';
+import AnalysisBoard from './components/AnalysisBoard';
+
+function App() {
+  const [currentPgn, setCurrentPgn] = useState('');
+
+  const handlePgnChange = (newPgn) => {
+    setCurrentPgn(newPgn);
+  };
+
+  const handleSaveStudy = async () => {
+    try {
+      await invoke('save_study', { pgn: currentPgn });
+      console.log('Study saved successfully');
+    } catch (error) {
+      console.error('Failed to save study:', error);
+    }
+  };
+
+  return (
+    <div>
+      <AnalysisBoard 
+        enablePgnBox={false}  // Hide PGN box, handle saving externally
+        onPgnChange={handlePgnChange} 
+      />
+      <button onClick={handleSaveStudy}>Save Study</button>
+    </div>
+  );
+}
+```
+
 ### With External Settings (Recommended for Apps)
 
 ```jsx
@@ -270,6 +307,9 @@ fn main() {
 | `showExternalSettings` | `boolean` | `false` | Whether to show settings modal externally |
 | `onToggleSettings` | `Function \| null` | `null` | Callback to toggle settings modal |
 | `startingFen` | `string \| null` | `null` | Custom starting position in FEN notation |
+| `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
+| `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
+| `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
 
 ### Settings Object Structure
 
@@ -304,11 +344,52 @@ All keyboard shortcuts and UI behavior can be customized via the settings panel:
 - **Auto-scroll**: Toggle automatic scrolling to keep selected move in view (default: enabled)
 - **Close**: Press `Esc` or click outside to close
 
+## UI Component Control
+
+The component supports selective enabling/disabling of UI sections for different use cases:
+
+### Disabling FEN Input
+
+```jsx
+// Completely disable FEN input functionality
+<AnalysisBoard enableFenInput={false} />
+```
+
+When `enableFenInput={false}`:
+- The FEN input section never appears
+- The "Toggle FEN Input" option is removed from settings
+- The Shift+F keyboard shortcut is disabled
+- Users cannot change the starting position via the UI
+
+### Disabling PGN Box
+
+```jsx
+// Hide the PGN input/output box entirely
+<AnalysisBoard enablePgnBox={false} />
+```
+
+When `enablePgnBox={false}`:
+- The entire PGN box is hidden (no textarea, copy button, or load button)
+- PGN generation still works internally for `onPgnChange` callback
+- Perfect for desktop apps that handle PGN saving externally
+
+### Combined Usage
+
+```jsx
+// For embedded use cases - minimal UI with external PGN handling
+<AnalysisBoard 
+  enableFenInput={false}
+  enablePgnBox={false}
+  onPgnChange={handleSaveToDatabase}
+  startingFen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+/>
+```
+
 ## FEN Support
 
 The component supports custom starting positions via FEN (Forsyth-Edwards Notation):
 
-### User Interface
+### User Interface (when enabled)t 
 - **Toggle Display**: Press `Shift+F` (or customize in settings) to show/hide the FEN input section
 - **FEN Input**: Paste FEN notation to set custom starting positions
 - **Validation**: Invalid FEN strings are rejected with user feedback
