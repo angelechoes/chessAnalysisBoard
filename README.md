@@ -59,18 +59,20 @@ import AnalysisBoard from './components/AnalysisBoard';
 function App() {
   const [currentPgn, setCurrentPgn] = useState('');
 
-  const handlePgnChange = (newPgn) => {
-    console.log('PGN updated:', newPgn);
-    setCurrentPgn(newPgn);
-    
-    // Save to file, send to server, etc.
-    // In Tauri: invoke('save_pgn', { pgn: newPgn });
+  // This runs on every change - just store it
+  const handlePgnChange = (pgn) => {
+    setCurrentPgn(pgn);
+  };
+
+  // This runs only when user clicks save
+  const handleSaveStudy = async () => {
+    await invoke('save_study', { pgn: currentPgn });
   };
 
   return (
     <div>
       <AnalysisBoard onPgnChange={handlePgnChange} />
-      <div>Current PGN: {currentPgn}</div>
+      <button onClick={handleSaveStudy}>Save Study</button>
     </div>
   );
 }
@@ -380,7 +382,7 @@ When `enablePgnBox={false}`:
 <AnalysisBoard 
   enableFenInput={false}
   enablePgnBox={false}
-  onPgnChange={handleSaveToDatabase}
+  onPgnChange={handlePgnUpdate}  // Just tracking changes
   startingFen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
 />
 ```

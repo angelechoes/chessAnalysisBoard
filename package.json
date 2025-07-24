@@ -1,23 +1,54 @@
 {
-  "name": "analysis-board-ui",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "chess-analysis-board",
+  "version": "1.0.1",
+  "description": "A comprehensive chess analysis board React component with move navigation, variation support, PGN import/export, and customizable keyboard shortcuts",
+  "main": "dist/index.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "vite build --mode library",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build:lib"
+  },
+  "keywords": [
+    "chess",
+    "analysis",
+    "board",
+    "react",
+    "component",
+    "pgn",
+    "variations",
+    "lichess",
+    "chessboard"
+  ],
+  "author": "angelechoes michaelsantos.215061@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/angelechoes/chessAnalysisBoard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angelechoes/chessAnalysisBoard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/angelechoes/chessAnalysisBoard/issues"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@mliebelt/pgn-parser": "^1.4.18",
     "chess.js": "^1.4.0",
     "immer": "^10.1.1",
-    "react": "^19.1.0",
     "react-chessboard": "^4.7.3",
-    "react-dom": "^19.1.0",
     "use-immer": "^0.11.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
@@ -28,6 +59,8 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "vite": "^6.3.5"
   }
 }
