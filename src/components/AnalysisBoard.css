@@ -532,3 +532,82 @@
     background-color: #357abd;
     border-color: #357abd;
 } 
+
+/* Embedded mode overrides for integration into other applications */
+.analysis-board-container.embedded-mode {
+  width: 100%;
+  max-width: none;
+  padding: 10px;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.analysis-board-container.embedded-mode .analysis-board {
+  width: 100%;
+  max-width: 500px;
+  flex: 1;
+  min-width: 400px;
+}
+
+.analysis-board-container.embedded-mode .move-history {
+  width: 100%;
+  max-width: 500px;
+  height: 400px;
+  max-height: none;
+  flex: 1;
+  min-width: 400px;
+}
+
+.fen-display.embedded-mode {
+  width: 100%;
+  max-width: none;
+  margin: 10px 0;
+}
+
+.pgn-display.embedded-mode {
+  width: 100%;
+  max-width: none;
+  margin: 10px 0;
+}
+
+/* Responsive adjustments for embedded mode */
+@media (max-width: 900px) {
+  .analysis-board-container.embedded-mode {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .analysis-board-container.embedded-mode .analysis-board,
+  .analysis-board-container.embedded-mode .move-history {
+    width: 100%;
+    max-width: 600px;
+    min-width: 300px;
+  }
+}
+
+/* Standalone mode explicit rules to maintain backward compatibility */
+.analysis-board-container.standalone-mode {
+  /* Keep existing viewport-based sizing */
+}
+
+.analysis-board-container.standalone-mode .analysis-board {
+  width: 60vw;
+  max-width: 600px;
+}
+
+.analysis-board-container.standalone-mode .move-history {
+  width: 55vw;
+  max-width: 650px;
+  height: 60vw;
+  max-height: 600px;
+}
+
+.fen-display.standalone-mode {
+  width: 90vw;
+  max-width: 940px;
+}
+
+.pgn-display.standalone-mode {
+  width: 90vw;
+  max-width: 940px;
+} 

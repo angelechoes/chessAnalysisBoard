@@ -312,6 +312,7 @@ fn main() {
 | `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
 | `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
 | `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
+| `containerMode` | `string` | `'standalone'` | Layout mode: `'standalone'` (viewport-based) or `'embedded'` (container-relative) |
 
 ### Settings Object Structure
 
@@ -321,6 +322,51 @@ fn main() {
   previousMove: 'k',     // Key to go to previous move
   nextMove: 'j'          // Key to go to next move
 }
+```
+
+## Container Modes
+
+The component supports two layout modes for different integration scenarios:
+
+### Standalone Mode (Default)
+
+```jsx
+<AnalysisBoard />
+// or explicitly
+<AnalysisBoard containerMode="standalone" />
+```
+
+- Uses viewport-based sizing (`vw`, `vh`)
+- Designed for full-page applications
+- Components size themselves relative to the browser window
+- Best for dedicated chess analysis applications
+
+### Embedded Mode
+
+```jsx
+<AnalysisBoard containerMode="embedded" />
+```
+
+- Uses container-relative sizing (`%`, `px`)
+- Designed for integration into existing applications
+- Components adapt to their container size
+- Perfect for Tauri desktop apps, dashboards, or embedded widgets
+
+**Key differences in embedded mode:**
+- Board and moves panel are limited to reasonable max sizes
+- Sections stack vertically on smaller screens
+- No viewport units - works within any container
+- Reduced padding and margins for compact layouts
+
+**Example for Tauri integration:**
+```jsx
+<div style={{ width: '1200px', height: '800px' }}>
+  <AnalysisBoard 
+    containerMode="embedded"
+    enablePgnBox={false}
+    onPgnChange={handlePgnChange}
+  />
+</div>
 ```
 
 ### Default Keyboard Shortcuts

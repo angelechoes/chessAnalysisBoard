@@ -17,7 +17,8 @@ const AnalysisBoard = ({
   startingFen = null,
   onPgnChange = null,
   enableFenInput = true,
-  enablePgnBox = true
+  enablePgnBox = true,
+  containerMode = 'standalone'
 }) => {
   // FEN state for starting position
   const [fenInput, setFenInput] = useState('');
@@ -719,7 +720,7 @@ const AnalysisBoard = ({
   
   return (
     <>
-      <div className="analysis-board-container">
+      <div className={`analysis-board-container ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
         <div className="analysis-board">
           <Chessboard 
             position={gameFen} 
@@ -751,7 +752,7 @@ const AnalysisBoard = ({
         </div>
       </div>
       {enableFenInput && showFenInput && (
-        <div className="fen-display">
+        <div className={`fen-display ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
           <div className="fen-header">
             <h3>Starting Position (FEN)</h3>
           </div>
@@ -768,7 +769,7 @@ const AnalysisBoard = ({
         </div>
       )}
       {enablePgnBox && (
-        <div className="pgn-display">
+        <div className={`pgn-display ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
           <div className="pgn-header">
               <h3>Live PGN</h3>
           </div>
