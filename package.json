@@ -1,6 +1,6 @@
 {
   "name": "chess-analysis-board",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A comprehensive chess analysis board React component with move navigation, variation support, PGN import/export, and customizable keyboard shortcuts",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
