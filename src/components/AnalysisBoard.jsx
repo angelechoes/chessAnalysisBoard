@@ -512,10 +512,22 @@ const AnalysisBoard = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Check if user is typing in an input field (except for Escape and settings shortcut)
-      const isTypingInInput = event.target.tagName === 'INPUT' || 
-                             event.target.tagName === 'TEXTAREA' || 
-                             event.target.contentEditable === 'true';
+      // Robustly detect if the user is typing in an editable field (use both event.target and document.activeElement)
+      const isEditable = (el) => {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName;
+        if (tag === 'TEXTAREA') return true;
+        if (tag === 'INPUT') {
+          const type = (el.getAttribute && el.getAttribute('type')) || 'text';
+          const textLike = ['text','search','email','url','tel','password','number'];
+          return textLike.includes(type.toLowerCase());
+        }
+        if (el.isContentEditable) return true;
+        if (el.getAttribute && el.getAttribute('contenteditable') === 'true') return true;
+        if (el.getAttribute && el.getAttribute('role') === 'textbox') return true;
+        return false;
+      };
+      const isTypingInInput = isEditable(event.target) || isEditable(document.activeElement);
 
       // Handle Escape key
       if (event.key === 'Escape') {
@@ -544,7 +556,7 @@ const AnalysisBoard = ({
       // Don't handle other shortcuts when settings is open
       if (effectiveShowSettings) return;
 
-      // Don't handle shortcuts when user is typing in input fields
+      // Don't handle other shortcuts when user is typing in input fields
       if (isTypingInInput) return;
 
       // Handle FEN input toggle (Shift+F by default) - only if FEN input is enabled
