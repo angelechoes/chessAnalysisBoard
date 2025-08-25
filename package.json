@@ -15,7 +15,8 @@
     "build:lib": "vite build --mode library",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prepublishOnly": "npm run build:lib"
+    "prepublishOnly": "npm run build:lib",
+    "prepare": "npm run build:lib"
   },
   "keywords": [
     "chess",
