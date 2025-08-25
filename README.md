@@ -36,6 +36,7 @@ npm install @mliebelt/pgn-parser chess.js react-chessboard use-immer
 ```jsx
 import React from 'react';
 import AnalysisBoard from './components/AnalysisBoard';
+import 'chess-analysis-board/dist/chess-analysis-board.css'; // If consuming as a package
 
 function App() {
   return (
@@ -86,6 +87,7 @@ For desktop applications, you can hide the PGN box and handle saving externally:
 import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import AnalysisBoard from './components/AnalysisBoard';
+import 'chess-analysis-board/dist/chess-analysis-board.css'; // Important: include library styles
 
 function App() {
   const [currentPgn, setCurrentPgn] = useState('');
@@ -114,6 +116,21 @@ function App() {
   );
 }
 ```
+
+## Using in another app (import the CSS)
+
+When consuming this component from another project (e.g., a Tauri app), you must import the packaged CSS for proper layout and styling:
+
+```jsx
+import AnalysisBoard from 'chess-analysis-board';
+import 'chess-analysis-board/dist/chess-analysis-board.css';
+
+export default function App() {
+  return <AnalysisBoard containerMode="embedded" />;
+}
+```
+
+Without the CSS import, the move list and text areas will appear unstyled/squashed.
 
 ### With External Settings (Recommended for Apps)
 

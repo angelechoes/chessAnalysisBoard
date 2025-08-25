@@ -21,6 +21,33 @@ const AnalysisBoard = ({
   containerMode = 'standalone'
 }) => {
   // FEN state for starting position
+  // In embedded mode, keep the move panel the same height as the board
+  const boardContainerRef = useRef(null);
+  const [boardPixelHeight, setBoardPixelHeight] = useState(null);
+
+  useEffect(() => {
+    if (containerMode !== 'embedded') {
+      setBoardPixelHeight(null);
+      return;
+    }
+    const el = boardContainerRef.current;
+    if (!el) return;
+
+    const update = () => setBoardPixelHeight(el.getBoundingClientRect().height);
+    update();
+
+    let ro;
+    if ('ResizeObserver' in window) {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', update);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, [containerMode]);
   const [fenInput, setFenInput] = useState('');
   const [currentStartingFen, setCurrentStartingFen] = useState(startingFen || new Chess().fen());
 
@@ -722,11 +749,13 @@ const AnalysisBoard = ({
     <>
       <div className={`analysis-board-container ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
         <div className="analysis-board">
-          <Chessboard 
+          <div ref={boardContainerRef}>
+            <Chessboard 
             position={gameFen} 
             onPieceDrop={onDrop} 
             boardOrientation={boardOrientation}
-          />
+            />
+          </div>
           <div className="comment-box">
             <textarea
               value={comment}
@@ -735,7 +764,7 @@ const AnalysisBoard = ({
             />
           </div>
         </div>
-        <div className="move-history">
+        <div className="move-history" style={containerMode === 'embedded' && boardPixelHeight ? { height: boardPixelHeight } : undefined}>
           <div className="moves-list" ref={movesListRef}>
              <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
           </div>
