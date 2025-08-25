@@ -560,6 +560,19 @@
   max-height: 600px;
 }
 
+/* Draggable vertical resizer between board and moves */
+.vertical-resizer {
+  width: 8px;
+  cursor: col-resize;
+  align-self: stretch;
+  background: transparent;
+  border-left: 1px solid #eee;
+  border-right: 1px solid #eee;
+}
+.vertical-resizer:hover, .vertical-resizer.resizing {
+  background: rgba(0,0,0,0.05);
+}
+
 .fen-display.embedded-mode {
   width: 100%;
   max-width: none;

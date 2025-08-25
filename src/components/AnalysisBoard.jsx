@@ -22,8 +22,13 @@ const AnalysisBoard = ({
 }) => {
   // FEN state for starting position
   // In embedded mode, keep the move panel the same height as the board
+  const containerRef = useRef(null);
   const boardContainerRef = useRef(null);
   const [boardPixelHeight, setBoardPixelHeight] = useState(null);
+  const [boardWidthPx, setBoardWidthPx] = useState(500);
+  const [isResizing, setIsResizing] = useState(false);
+  const [collapsedMoves, setCollapsedMoves] = useState(false);
+  const lastBoardWidthRef = useRef(500);
 
   useEffect(() => {
     if (containerMode !== 'embedded') {
@@ -48,6 +53,64 @@ const AnalysisBoard = ({
       else window.removeEventListener('resize', update);
     };
   }, [containerMode]);
+
+  // Compute initial board width based on container when embedded
+  useEffect(() => {
+    if (containerMode !== 'embedded') return;
+    const el = containerRef.current;
+    if (!el) return;
+    const compute = () => {
+      const total = el.getBoundingClientRect().width;
+      const desired = Math.min(560, Math.max(380, Math.round(total * 0.55)));
+      setBoardWidthPx(desired);
+      lastBoardWidthRef.current = desired;
+    };
+    compute();
+    const onResize = () => compute();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [containerMode]);
+
+  // Drag handlers for vertical resizer between board and moves
+  const startResize = (event) => {
+    if (containerMode !== 'embedded') return;
+    event.preventDefault();
+    setIsResizing(true);
+    const startX = event.clientX;
+    const el = containerRef.current;
+    const rect = el ? el.getBoundingClientRect() : { width: 0 };
+    const initial = boardWidthPx;
+    const minBoard = 360;
+    const minMoves = 300;
+    const resizerW = 8;
+
+    const onMove = (e) => {
+      const delta = e.clientX - startX;
+      let next = initial + delta;
+      const total = rect.width;
+      next = Math.max(minBoard, Math.min(next, total - minMoves - resizerW));
+      setBoardWidthPx(next);
+      lastBoardWidthRef.current = next;
+      if (collapsedMoves) setCollapsedMoves(false);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const toggleCollapseMoves = () => {
+    if (collapsedMoves) {
+      setCollapsedMoves(false);
+      setBoardWidthPx(lastBoardWidthRef.current || 500);
+    } else {
+      lastBoardWidthRef.current = boardWidthPx;
+      setCollapsedMoves(true);
+    }
+  };
   const [fenInput, setFenInput] = useState('');
   const [currentStartingFen, setCurrentStartingFen] = useState(startingFen || new Chess().fen());
 
@@ -93,8 +156,8 @@ const AnalysisBoard = ({
   const [showFenInput, setShowFenInput] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
-  // Use external settings if provided
-  const effectiveSettings = externalSettings || keyboardShortcuts;
+  // Merge external settings over internal defaults so missing keys fall back
+  const effectiveSettings = { ...keyboardShortcuts, ...(externalSettings || {}) };
   const effectiveShowSettings = showExternalSettings || showSettings;
 
   // Handle settings changes
@@ -747,8 +810,15 @@ const AnalysisBoard = ({
   
   return (
     <>
-      <div className={`analysis-board-container ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
-        <div className="analysis-board">
+      <div ref={containerRef} className={`analysis-board-container ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
+        <div
+          className="analysis-board"
+          style={containerMode === 'embedded' ? {
+            flex: collapsedMoves ? '1 1 auto' : '0 0 auto',
+            flexBasis: collapsedMoves ? 'auto' : `${Math.round(boardWidthPx)}px`,
+            width: collapsedMoves ? '100%' : `${Math.round(boardWidthPx)}px`
+          } : undefined}
+        >
           <div ref={boardContainerRef}>
             <Chessboard 
             position={gameFen} 
@@ -764,6 +834,17 @@ const AnalysisBoard = ({
             />
           </div>
         </div>
+        {containerMode === 'embedded' && !collapsedMoves && (
+          <div
+            className={`vertical-resizer${isResizing ? ' resizing' : ''}`}
+            onMouseDown={startResize}
+            onDoubleClick={toggleCollapseMoves}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize moves panel"
+          />
+        )}
+        {!collapsedMoves && (
         <div className="move-history" style={containerMode === 'embedded' && boardPixelHeight ? { height: boardPixelHeight } : undefined}>
           <div className="moves-list" ref={movesListRef}>
              <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
@@ -779,6 +860,7 @@ const AnalysisBoard = ({
             </div>
           )}
         </div>
+        )}
       </div>
       {enableFenInput && showFenInput && (
         <div className={`fen-display ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
