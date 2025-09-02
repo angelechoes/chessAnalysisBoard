@@ -17,9 +17,100 @@ const AnalysisBoard = ({
   startingFen = null,
   onPgnChange = null,
   enableFenInput = true,
-  enablePgnBox = true
+  enablePgnBox = true,
+  containerMode = 'standalone'
 }) => {
   // FEN state for starting position
+  // In embedded mode, keep the move panel the same height as the board
+  const containerRef = useRef(null);
+  const boardContainerRef = useRef(null);
+  const [boardPixelHeight, setBoardPixelHeight] = useState(null);
+  const [boardWidthPx, setBoardWidthPx] = useState(500);
+  const [isResizing, setIsResizing] = useState(false);
+  const [collapsedMoves, setCollapsedMoves] = useState(false);
+  const lastBoardWidthRef = useRef(500);
+
+  useEffect(() => {
+    if (containerMode !== 'embedded') {
+      setBoardPixelHeight(null);
+      return;
+    }
+    const el = boardContainerRef.current;
+    if (!el) return;
+
+    const update = () => setBoardPixelHeight(el.getBoundingClientRect().height);
+    update();
+
+    let ro;
+    if ('ResizeObserver' in window) {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', update);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', update);
+    };
+  }, [containerMode]);
+
+  // Compute initial board width based on container when embedded
+  useEffect(() => {
+    if (containerMode !== 'embedded') return;
+    const el = containerRef.current;
+    if (!el) return;
+    const compute = () => {
+      const total = el.getBoundingClientRect().width;
+      const desired = Math.min(560, Math.max(380, Math.round(total * 0.55)));
+      setBoardWidthPx(desired);
+      lastBoardWidthRef.current = desired;
+    };
+    compute();
+    const onResize = () => compute();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [containerMode]);
+
+  // Drag handlers for vertical resizer between board and moves
+  const startResize = (event) => {
+    if (containerMode !== 'embedded') return;
+    event.preventDefault();
+    setIsResizing(true);
+    const startX = event.clientX;
+    const el = containerRef.current;
+    const rect = el ? el.getBoundingClientRect() : { width: 0 };
+    const initial = boardWidthPx;
+    const minBoard = 360;
+    const minMoves = 300;
+    const resizerW = 8;
+
+    const onMove = (e) => {
+      const delta = e.clientX - startX;
+      let next = initial + delta;
+      const total = rect.width;
+      next = Math.max(minBoard, Math.min(next, total - minMoves - resizerW));
+      setBoardWidthPx(next);
+      lastBoardWidthRef.current = next;
+      if (collapsedMoves) setCollapsedMoves(false);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const toggleCollapseMoves = () => {
+    if (collapsedMoves) {
+      setCollapsedMoves(false);
+      setBoardWidthPx(lastBoardWidthRef.current || 500);
+    } else {
+      lastBoardWidthRef.current = boardWidthPx;
+      setCollapsedMoves(true);
+    }
+  };
   const [fenInput, setFenInput] = useState('');
   const [currentStartingFen, setCurrentStartingFen] = useState(startingFen || new Chess().fen());
 
@@ -65,8 +156,8 @@ const AnalysisBoard = ({
   const [showFenInput, setShowFenInput] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
-  // Use external settings if provided
-  const effectiveSettings = externalSettings || keyboardShortcuts;
+  // Merge external settings over internal defaults so missing keys fall back
+  const effectiveSettings = { ...keyboardShortcuts, ...(externalSettings || {}) };
   const effectiveShowSettings = showExternalSettings || showSettings;
 
   // Handle settings changes
@@ -421,10 +512,22 @@ const AnalysisBoard = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Check if user is typing in an input field (except for Escape and settings shortcut)
-      const isTypingInInput = event.target.tagName === 'INPUT' || 
-                             event.target.tagName === 'TEXTAREA' || 
-                             event.target.contentEditable === 'true';
+      // Robustly detect if the user is typing in an editable field (use both event.target and document.activeElement)
+      const isEditable = (el) => {
+        if (!el || !el.tagName) return false;
+        const tag = el.tagName;
+        if (tag === 'TEXTAREA') return true;
+        if (tag === 'INPUT') {
+          const type = (el.getAttribute && el.getAttribute('type')) || 'text';
+          const textLike = ['text','search','email','url','tel','password','number'];
+          return textLike.includes(type.toLowerCase());
+        }
+        if (el.isContentEditable) return true;
+        if (el.getAttribute && el.getAttribute('contenteditable') === 'true') return true;
+        if (el.getAttribute && el.getAttribute('role') === 'textbox') return true;
+        return false;
+      };
+      const isTypingInInput = isEditable(event.target) || isEditable(document.activeElement);
 
       // Handle Escape key
       if (event.key === 'Escape') {
@@ -453,7 +556,7 @@ const AnalysisBoard = ({
       // Don't handle other shortcuts when settings is open
       if (effectiveShowSettings) return;
 
-      // Don't handle shortcuts when user is typing in input fields
+      // Don't handle other shortcuts when user is typing in input fields
       if (isTypingInInput) return;
 
       // Handle FEN input toggle (Shift+F by default) - only if FEN input is enabled
@@ -719,13 +822,22 @@ const AnalysisBoard = ({
   
   return (
     <>
-      <div className="analysis-board-container">
-        <div className="analysis-board">
-          <Chessboard 
+      <div ref={containerRef} className={`analysis-board-container ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
+        <div
+          className="analysis-board"
+          style={containerMode === 'embedded' ? {
+            flex: collapsedMoves ? '1 1 auto' : '0 0 auto',
+            flexBasis: collapsedMoves ? 'auto' : `${Math.round(boardWidthPx)}px`,
+            width: collapsedMoves ? '100%' : `${Math.round(boardWidthPx)}px`
+          } : undefined}
+        >
+          <div ref={boardContainerRef}>
+            <Chessboard 
             position={gameFen} 
             onPieceDrop={onDrop} 
             boardOrientation={boardOrientation}
-          />
+            />
+          </div>
           <div className="comment-box">
             <textarea
               value={comment}
@@ -734,7 +846,18 @@ const AnalysisBoard = ({
             />
           </div>
         </div>
-        <div className="move-history">
+        {containerMode === 'embedded' && !collapsedMoves && (
+          <div
+            className={`vertical-resizer${isResizing ? ' resizing' : ''}`}
+            onMouseDown={startResize}
+            onDoubleClick={toggleCollapseMoves}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize moves panel"
+          />
+        )}
+        {!collapsedMoves && (
+        <div className="move-history" style={containerMode === 'embedded' && boardPixelHeight ? { height: boardPixelHeight } : undefined}>
           <div className="moves-list" ref={movesListRef}>
              <MovesDisplay tree={tree} currentPath={currentPath} navigateToPath={navigateToPath} handleContextMenu={handleContextMenu} />
           </div>
@@ -749,9 +872,10 @@ const AnalysisBoard = ({
             </div>
           )}
         </div>
+        )}
       </div>
       {enableFenInput && showFenInput && (
-        <div className="fen-display">
+        <div className={`fen-display ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
           <div className="fen-header">
             <h3>Starting Position (FEN)</h3>
           </div>
@@ -768,7 +892,7 @@ const AnalysisBoard = ({
         </div>
       )}
       {enablePgnBox && (
-        <div className="pgn-display">
+        <div className={`pgn-display ${containerMode === 'embedded' ? 'embedded-mode' : 'standalone-mode'}`}>
           <div className="pgn-header">
               <h3>Live PGN</h3>
           </div>

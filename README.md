@@ -36,6 +36,7 @@ npm install @mliebelt/pgn-parser chess.js react-chessboard use-immer
 ```jsx
 import React from 'react';
 import AnalysisBoard from './components/AnalysisBoard';
+import 'chess-analysis-board/dist/chess-analysis-board.css'; // If consuming as a package
 
 function App() {
   return (
@@ -59,18 +60,20 @@ import AnalysisBoard from './components/AnalysisBoard';
 function App() {
   const [currentPgn, setCurrentPgn] = useState('');
 
-  const handlePgnChange = (newPgn) => {
-    console.log('PGN updated:', newPgn);
-    setCurrentPgn(newPgn);
-    
-    // Save to file, send to server, etc.
-    // In Tauri: invoke('save_pgn', { pgn: newPgn });
+  // This runs on every change - just store it
+  const handlePgnChange = (pgn) => {
+    setCurrentPgn(pgn);
+  };
+
+  // This runs only when user clicks save
+  const handleSaveStudy = async () => {
+    await invoke('save_study', { pgn: currentPgn });
   };
 
   return (
     <div>
       <AnalysisBoard onPgnChange={handlePgnChange} />
-      <div>Current PGN: {currentPgn}</div>
+      <button onClick={handleSaveStudy}>Save Study</button>
     </div>
   );
 }
@@ -84,6 +87,7 @@ For desktop applications, you can hide the PGN box and handle saving externally:
 import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import AnalysisBoard from './components/AnalysisBoard';
+import 'chess-analysis-board/dist/chess-analysis-board.css'; // Important: include library styles
 
 function App() {
   const [currentPgn, setCurrentPgn] = useState('');
@@ -112,6 +116,21 @@ function App() {
   );
 }
 ```
+
+## Using in another app (import the CSS)
+
+When consuming this component from another project (e.g., a Tauri app), you must import the packaged CSS for proper layout and styling:
+
+```jsx
+import AnalysisBoard from 'chess-analysis-board';
+import 'chess-analysis-board/dist/chess-analysis-board.css';
+
+export default function App() {
+  return <AnalysisBoard containerMode="embedded" />;
+}
+```
+
+Without the CSS import, the move list and text areas will appear unstyled/squashed.
 
 ### With External Settings (Recommended for Apps)
 
@@ -310,6 +329,7 @@ fn main() {
 | `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
 | `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
 | `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
+| `containerMode` | `string` | `'standalone'` | Layout mode: `'standalone'` (viewport-based) or `'embedded'` (container-relative) |
 
 ### Settings Object Structure
 
@@ -319,6 +339,51 @@ fn main() {
   previousMove: 'k',     // Key to go to previous move
   nextMove: 'j'          // Key to go to next move
 }
+```
+
+## Container Modes
+
+The component supports two layout modes for different integration scenarios:
+
+### Standalone Mode (Default)
+
+```jsx
+<AnalysisBoard />
+// or explicitly
+<AnalysisBoard containerMode="standalone" />
+```
+
+- Uses viewport-based sizing (`vw`, `vh`)
+- Designed for full-page applications
+- Components size themselves relative to the browser window
+- Best for dedicated chess analysis applications
+
+### Embedded Mode
+
+```jsx
+<AnalysisBoard containerMode="embedded" />
+```
+
+- Uses container-relative sizing (`%`, `px`)
+- Designed for integration into existing applications
+- Components adapt to their container size
+- Perfect for Tauri desktop apps, dashboards, or embedded widgets
+
+**Key differences in embedded mode:**
+- Board and moves panel are limited to reasonable max sizes
+- Sections stack vertically on smaller screens
+- No viewport units - works within any container
+- Reduced padding and margins for compact layouts
+
+**Example for Tauri integration:**
+```jsx
+<div style={{ width: '1200px', height: '800px' }}>
+  <AnalysisBoard 
+    containerMode="embedded"
+    enablePgnBox={false}
+    onPgnChange={handlePgnChange}
+  />
+</div>
 ```
 
 ### Default Keyboard Shortcuts
@@ -380,7 +445,7 @@ When `enablePgnBox={false}`:
 <AnalysisBoard 
   enableFenInput={false}
   enablePgnBox={false}
-  onPgnChange={handleSaveToDatabase}
+  onPgnChange={handlePgnUpdate}  // Just tracking changes
   startingFen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
 />
 ```

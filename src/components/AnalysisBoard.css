@@ -12,7 +12,7 @@
   max-width: 600px;
 }
 
-.move-history {
+.analysis-board-container .move-history {
   width: 55vw;
   max-width: 650px;
   border: 1px solid #ccc;
@@ -30,20 +30,20 @@
   border-bottom: 1px solid #eee;
 }
 
-.moves-list {
+.analysis-board-container .moves-list {
   font-size: 14px;
   line-height: 1.6;
   flex: 1;
   overflow-y: auto;
 }
 
-.move-row {
+.analysis-board-container .move-row {
   display: flex;
   align-items: baseline;
   padding: 2px 0;
 }
 
-.move-number {
+.analysis-board-container .move-number {
   flex-basis: 35px;
   flex-shrink: 0;
   color: #777;
@@ -51,22 +51,22 @@
   padding-right: 5px;
 }
 
-.move-pair {
+.analysis-board-container .move-pair {
     flex-basis: 50%;
     display: block;
     line-height: 1.5;
 }
 
-.move-group {
+.analysis-board-container .move-group {
     display: inline;
 }
 
-.move-wrapper {
+.analysis-board-container .move-wrapper {
     display: inline-block;
     margin-right: 4px; /* Space between moves in a line */
 }
 
-.move {
+.analysis-board-container .move {
     display: inline-block;
     font-weight: 600;
     padding: 2px 4px;
@@ -74,20 +74,20 @@
     cursor: pointer;
 }
 
-.move:hover {
+.analysis-board-container .move:hover {
     background-color: #f0f0f0;
 }
 
-.selected-move {
+.analysis-board-container .selected-move {
     background-color: #bde0ff;
 }
 
-.variations-block {
+.analysis-board-container .variations-block {
     margin-top: 4px;
     width: 100%;
 }
 
-.variation-line {
+.analysis-board-container .variation-line {
     display: block;
     background-color: #f8f8f8;
     padding: 6px 12px;
@@ -100,61 +100,61 @@
     box-sizing: border-box;
 }
 
-.variation-line .move {
+.analysis-board-container .variation-line .move {
     font-weight: 500;
     color: #666;
 }
 
-.variation-line .move-number {
+.analysis-board-container .variation-line .move-number {
     color: #888;
 }
 
-.variation-line.depth-2 {
+.analysis-board-container .variation-line.depth-2 {
     margin-left: 20px;
     background-color: #f0f0f0;
     border-left-color: #bbb;
 }
 
-.variation-line.depth-3 {
+.analysis-board-container .variation-line.depth-3 {
     margin-left: 40px;
     background-color: #e8e8e8;
     border-left-color: #999;
 }
 
-.sub-variations {
+.analysis-board-container .sub-variations {
     display: block;
     margin-top: 4px;
 }
 
-.sub-variations .variations-block {
+.analysis-board-container .sub-variations .variations-block {
     display: block;
     margin-top: 0;
 }
 
-.sub-variations .variation-line {
+.analysis-board-container .sub-variations .variation-line {
     display: block;
     margin-bottom: 2px;
     margin-left: 20px;
 }
 
-.inline-comment {
+.analysis-board-container .inline-comment {
     color: #777;
     font-style: italic;
     margin-left: 4px;
 }
 
-.comment-row {
+.analysis-board-container .comment-row {
     padding: 0 0 5px 0;
 }
 
-.comment {
+.analysis-board-container .comment {
   color: #555;
   font-style: italic;
   display: block;
   padding-left: 10px; /* Indent under the move pair */
 }
 
-.empty-move {
+.analysis-board-container .empty-move {
     color: #999;
 }
 
@@ -531,4 +531,98 @@
 .branch-selection button:hover {
     background-color: #357abd;
     border-color: #357abd;
+} 
+
+/* Embedded mode overrides for integration into other applications */
+.analysis-board-container.embedded-mode {
+  width: 100%;
+  max-width: none;
+  padding: 10px;
+  gap: 15px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: nowrap; /* keep side-by-side in embedded mode */
+}
+
+.analysis-board-container.embedded-mode .analysis-board {
+  flex: 0 0 500px; /* fixed board column width */
+  width: 500px;
+  max-width: 100%;
+  min-width: 380px;
+}
+
+.analysis-board-container.embedded-mode .move-history {
+  flex: 1 1 0;
+  width: auto;
+  max-width: none;
+  min-width: 300px;
+  height: 400px;
+  max-height: 600px;
+}
+
+/* Draggable vertical resizer between board and moves */
+.vertical-resizer {
+  width: 8px;
+  cursor: col-resize;
+  align-self: stretch;
+  background: transparent;
+  border-left: 1px solid #eee;
+  border-right: 1px solid #eee;
+}
+.vertical-resizer:hover, .vertical-resizer.resizing {
+  background: rgba(0,0,0,0.05);
+}
+
+.fen-display.embedded-mode {
+  width: 100%;
+  max-width: none;
+  margin: 10px 0;
+}
+
+.pgn-display.embedded-mode {
+  width: 100%;
+  max-width: none;
+  margin: 10px 0;
+}
+
+/* Responsive adjustments for embedded mode */
+@media (max-width: 900px) {
+  .analysis-board-container.embedded-mode {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .analysis-board-container.embedded-mode .analysis-board,
+  .analysis-board-container.embedded-mode .move-history {
+    width: 100%;
+    max-width: 600px;
+    min-width: 300px;
+  }
+}
+
+/* Standalone mode explicit rules to maintain backward compatibility */
+.analysis-board-container.standalone-mode {
+  /* Keep existing viewport-based sizing */
+}
+
+.analysis-board-container.standalone-mode .analysis-board {
+  width: 60vw;
+  max-width: 600px;
+}
+
+.analysis-board-container.standalone-mode .move-history {
+  width: 55vw;
+  max-width: 650px;
+  height: 60vw;
+  max-height: 600px;
+}
+
+.fen-display.standalone-mode {
+  width: 90vw;
+  max-width: 940px;
+}
+
+.pgn-display.standalone-mode {
+  width: 90vw;
+  max-width: 940px;
 } 

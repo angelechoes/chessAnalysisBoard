@@ -1,0 +1,11 @@
+src/
+public/
+node_modules/
+.git/
+.gitignore
+vite.config.js
+eslint.config.js
+index.html
+*.log
+.DS_Store
+.env* 
