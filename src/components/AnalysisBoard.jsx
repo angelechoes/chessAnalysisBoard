@@ -15,6 +15,7 @@ const AnalysisBoard = ({
   showExternalSettings = false,
   onToggleSettings = null,
   startingFen = null,
+  startingPgn = null,
   onPgnChange = null,
   enableFenInput = true,
   enablePgnBox = true,
@@ -194,6 +195,75 @@ const AnalysisBoard = ({
     }
   }, [startingFen, currentStartingFen, setTree]);
 
+  // Load starting PGN when prop changes
+  useEffect(() => {
+    if (startingPgn) {
+      try {
+        const pgnAst = parse(startingPgn, { startRule: 'game' });
+        
+        if (pgnAst && pgnAst.moves.length > 0) {
+          // Extract FEN from PGN headers if present
+          let startingFenFromPgn = new Chess().fen();
+          if (pgnAst.headers && pgnAst.headers.FEN) {
+            startingFenFromPgn = pgnAst.headers.FEN;
+            setCurrentStartingFen(startingFenFromPgn);
+          }
+
+          setTree(draft => {
+            draft.id = 'root';
+            draft.san = null;
+            draft.comment = '';
+            draft.fen = startingFenFromPgn;
+            draft.ply = -1;
+            draft.children = [];
+            
+            const addMovesToNode = (currentParentNode, moves) => {
+              if (!moves || moves.length === 0) return;
+              let lastNodeForThisLine = currentParentNode;
+
+              for (const move of moves) {
+                const game = new Chess(lastNodeForThisLine.fen);
+                const moveResult = game.move(move.notation.notation);
+                
+                if (moveResult) {
+                  const newNode = {
+                    id: nextId++,
+                    move: moveResult,
+                    san: moveResult.san,
+                    comment: [
+                      ...(move.commentBefore ? [move.commentBefore] : []),
+                      ...(move.commentMove ? [move.commentMove] : []),
+                      ...(move.commentAfter ? [move.commentAfter] : [])
+                    ].join(' ').trim(),
+                    fen: game.fen(),
+                    ply: lastNodeForThisLine.ply + 1,
+                    children: [],
+                  };
+                  lastNodeForThisLine.children.push(newNode);
+
+                  if (move.variations) {
+                    move.variations.forEach(variation => {
+                      addMovesToNode(lastNodeForThisLine, variation);
+                    });
+                  }
+                  
+                  lastNodeForThisLine = newNode;
+                }
+              }
+            };
+            
+            addMovesToNode(draft, pgnAst.moves);
+          });
+
+          setCurrentPath([]);
+          setPgnInput(startingPgn);
+        }
+      } catch (error) {
+        console.error("Invalid starting PGN:", error);
+      }
+    }
+  }, [startingPgn, setTree]);
+
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
     let node = sourceTree;
@@ -278,17 +348,25 @@ const AnalysisBoard = ({
     setPgnInput(event.target.value);
   };
   
-  const handleLoadPgn = () => {
+  // Load PGN from a given string (shared logic)
+  const loadPgnFromString = (pgnString) => {
     try {
       // The pgn-parser library returns null for an empty string.
-      if (!pgnInput) return;
+      if (!pgnString) return false;
 
       // Use the new library to parse the PGN string into a structured object (Abstract Syntax Tree)
-      const pgnAst = parse(pgnInput, { startRule: 'game' });
+      const pgnAst = parse(pgnString, { startRule: 'game' });
       
       if (!pgnAst || pgnAst.moves.length === 0) {
-        alert('Could not parse any moves from the PGN.');
-        return;
+        console.warn('Could not parse any moves from the PGN.');
+        return false;
+      }
+
+      // Extract FEN from PGN headers if present
+      let startingFenFromPgn = new Chess().fen(); // default starting position
+      if (pgnAst.headers && pgnAst.headers.FEN) {
+        startingFenFromPgn = pgnAst.headers.FEN;
+        setCurrentStartingFen(startingFenFromPgn);
       }
 
       setTree(draft => {
@@ -296,7 +374,7 @@ const AnalysisBoard = ({
         draft.id = 'root';
         draft.san = null;
         draft.comment = '';
-        draft.fen = currentStartingFen;
+        draft.fen = startingFenFromPgn;
         draft.ply = -1;
         draft.children = [];
         
@@ -347,9 +425,17 @@ const AnalysisBoard = ({
       });
 
       setCurrentPath([]);
+      return true;
 
     } catch (error) {
       console.error("Invalid PGN:", error);
+      return false;
+    }
+  };
+
+  const handleLoadPgn = () => {
+    const success = loadPgnFromString(pgnInput);
+    if (!success) {
       alert("The PGN is invalid and could not be loaded.");
     }
   };

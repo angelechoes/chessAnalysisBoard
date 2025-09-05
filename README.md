@@ -326,6 +326,7 @@ fn main() {
 | `showExternalSettings` | `boolean` | `false` | Whether to show settings modal externally |
 | `onToggleSettings` | `Function \| null` | `null` | Callback to toggle settings modal |
 | `startingFen` | `string \| null` | `null` | Custom starting position in FEN notation |
+| `startingPgn` | `string \| null` | `null` | Load a complete game/analysis from PGN notation |
 | `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
 | `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
 | `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
@@ -470,7 +471,21 @@ The component supports custom starting positions via FEN (Forsyth-Edwards Notati
 
 // Example: King and Pawn endgame
 <AnalysisBoard 
-  startingFen="8/8/8/8/8/8/4K1k1/8 w - - 0 1"
+  startingFen="8/8/4k3/8/8/4P3/4K3/8 w - - 0 1"
+/>
+
+// Load a complete game with moves, variations, and comments
+<AnalysisBoard 
+  startingPgn={`1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Spanish Opening} a6 
+(3... f5 {The Schliemann Defense} 4. Nc3 fxe4 5. Nxe4) 
+4. Ba4 Nf6 5. O-O Be7 *`}
+/>
+
+// Load from a custom starting position with PGN
+<AnalysisBoard 
+  startingPgn={`[FEN "rnbqkb1r/ppp2ppp/4pn2/3p4/3P1B2/2N5/PPP1PPPP/R2QKBNR w KQkq - 0 1"]
+
+1. Nb5 Na6 (1... Bd6 2. Nxd6+ cxd6 3. e3) 2. e3 c6 3. Nc3 *`}
 />
 ```
 
