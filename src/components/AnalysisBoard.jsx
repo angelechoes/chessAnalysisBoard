@@ -216,10 +216,13 @@ const AnalysisBoard = ({
           return;
         }
 
-        // Extract FEN from PGN headers if present
-        let startingFenFromPgn = new Chess().fen();
-        if (pgnAst.headers && pgnAst.headers.FEN) {
-          startingFenFromPgn = pgnAst.headers.FEN;
+        // Extract FEN from PGN tags if present
+        let startingFenFromPgn = new Chess().fen(); // default starting position
+        let pgnHasFenHeader = false;
+        
+        if (pgnAst.tags && pgnAst.tags.FEN) {
+          pgnHasFenHeader = true;
+          startingFenFromPgn = pgnAst.tags.FEN;
           
           // Validate the FEN from PGN header
           try {
@@ -231,16 +234,19 @@ const AnalysisBoard = ({
             });
             return;
           }
-        }
-
-        // Check if startingFen prop conflicts with PGN's FEN
-        if (startingFen && startingFen !== startingFenFromPgn) {
-          reportError('fen_pgn_conflict', 'The startingFen prop conflicts with the FEN header in the PGN', {
-            providedFen: startingFen,
-            pgnFen: startingFenFromPgn,
-            pgn: startingPgn
-          });
-          return;
+          
+          // Check if startingFen prop conflicts with PGN's FEN header
+          if (startingFen && startingFen !== startingFenFromPgn) {
+            reportError('fen_pgn_conflict', 'The startingFen prop conflicts with the FEN header in the PGN', {
+              providedFen: startingFen,
+              pgnFen: startingFenFromPgn,
+              pgn: startingPgn
+            });
+            return;
+          }
+        } else if (startingFen) {
+          // PGN has no FEN header, use startingFen prop if provided
+          startingFenFromPgn = startingFen;
         }
 
         // Validate that the first move in PGN is legal from the starting position
