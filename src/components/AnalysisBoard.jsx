@@ -17,6 +17,7 @@ const AnalysisBoard = ({
   startingFen = null,
   startingPgn = null,
   onPgnChange = null,
+  onError = null,
   enableFenInput = true,
   enablePgnBox = true,
   containerMode = 'standalone'
@@ -30,6 +31,15 @@ const AnalysisBoard = ({
   const [isResizing, setIsResizing] = useState(false);
   const [collapsedMoves, setCollapsedMoves] = useState(false);
   const lastBoardWidthRef = useRef(500);
+
+  // Helper to report errors to parent component
+  const reportError = useCallback((type, message, details = null) => {
+    const error = { type, message, details };
+    console.error('AnalysisBoard Error:', error);
+    if (onError) {
+      onError(error);
+    }
+  }, [onError]);
 
   useEffect(() => {
     if (containerMode !== 'embedded') {
@@ -201,13 +211,56 @@ const AnalysisBoard = ({
       try {
         const pgnAst = parse(startingPgn, { startRule: 'game' });
         
-        if (pgnAst && pgnAst.moves.length > 0) {
-          // Extract FEN from PGN headers if present
-          let startingFenFromPgn = new Chess().fen();
-          if (pgnAst.headers && pgnAst.headers.FEN) {
-            startingFenFromPgn = pgnAst.headers.FEN;
-            setCurrentStartingFen(startingFenFromPgn);
+        if (!pgnAst || pgnAst.moves.length === 0) {
+          reportError('invalid_pgn', 'The provided PGN contains no valid moves', { pgn: startingPgn });
+          return;
+        }
+
+        // Extract FEN from PGN headers if present
+        let startingFenFromPgn = new Chess().fen();
+        if (pgnAst.headers && pgnAst.headers.FEN) {
+          startingFenFromPgn = pgnAst.headers.FEN;
+          
+          // Validate the FEN from PGN header
+          try {
+            new Chess(startingFenFromPgn);
+          } catch (fenError) {
+            reportError('invalid_fen_in_pgn', 'The FEN position in the PGN header is invalid', { 
+              fen: startingFenFromPgn, 
+              error: fenError.message 
+            });
+            return;
           }
+        }
+
+        // Check if startingFen prop conflicts with PGN's FEN
+        if (startingFen && startingFen !== startingFenFromPgn) {
+          reportError('fen_pgn_conflict', 'The startingFen prop conflicts with the FEN header in the PGN', {
+            providedFen: startingFen,
+            pgnFen: startingFenFromPgn,
+            pgn: startingPgn
+          });
+          return;
+        }
+
+        // Validate that the first move in PGN is legal from the starting position
+        try {
+          const testGame = new Chess(startingFenFromPgn);
+          const firstMove = pgnAst.moves[0];
+          if (firstMove && firstMove.notation) {
+            testGame.move(firstMove.notation.notation);
+          }
+        } catch (moveError) {
+          reportError('invalid_pgn_moves', 'The first move in the PGN is not legal from the starting position', {
+            startingFen: startingFenFromPgn,
+            firstMove: pgnAst.moves[0]?.notation?.notation,
+            error: moveError.message
+          });
+          return;
+        }
+
+        if (pgnAst && pgnAst.moves.length > 0) {
+          setCurrentStartingFen(startingFenFromPgn);
 
           setTree(draft => {
             draft.id = 'root';
@@ -259,10 +312,13 @@ const AnalysisBoard = ({
           setPgnInput(startingPgn);
         }
       } catch (error) {
-        console.error("Invalid starting PGN:", error);
+        reportError('pgn_parse_error', 'Failed to parse the starting PGN', { 
+          pgn: startingPgn, 
+          error: error.message 
+        });
       }
     }
-  }, [startingPgn, setTree]);
+  }, [startingPgn, startingFen, setTree, reportError]);
 
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
@@ -358,7 +414,7 @@ const AnalysisBoard = ({
       const pgnAst = parse(pgnString, { startRule: 'game' });
       
       if (!pgnAst || pgnAst.moves.length === 0) {
-        console.warn('Could not parse any moves from the PGN.');
+        reportError('invalid_pgn', 'Could not parse any moves from the PGN', { pgn: pgnString });
         return false;
       }
 
@@ -428,7 +484,7 @@ const AnalysisBoard = ({
       return true;
 
     } catch (error) {
-      console.error("Invalid PGN:", error);
+      reportError('pgn_parse_error', 'Failed to parse PGN', { pgn: pgnString, error: error.message });
       return false;
     }
   };

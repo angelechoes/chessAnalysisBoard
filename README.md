@@ -328,6 +328,7 @@ fn main() {
 | `startingFen` | `string \| null` | `null` | Custom starting position in FEN notation |
 | `startingPgn` | `string \| null` | `null` | Load a complete game/analysis from PGN notation |
 | `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
+| `onError` | `Function \| null` | `null` | Callback for error reporting (validation, parsing, conflicts) |
 | `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
 | `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
 | `containerMode` | `string` | `'standalone'` | Layout mode: `'standalone'` (viewport-based) or `'embedded'` (container-relative) |
@@ -341,6 +342,49 @@ fn main() {
   nextMove: 'j'          // Key to go to next move
 }
 ```
+
+## Error Handling
+
+The component validates input and reports errors via the `onError` callback:
+
+```jsx
+const handleError = (error) => {
+  console.error('Chess Analysis Error:', error);
+  
+  switch (error.type) {
+    case 'fen_pgn_conflict':
+      showUserMessage('The starting position conflicts with the PGN');
+      break;
+    case 'invalid_pgn':
+      showUserMessage('Invalid PGN format');
+      break;
+    case 'invalid_pgn_moves':
+      showUserMessage('PGN moves are not legal from the starting position');
+      break;
+    case 'invalid_fen_in_pgn':
+      showUserMessage('Invalid FEN in PGN header');
+      break;
+    default:
+      showUserMessage('Chess analysis error occurred');
+  }
+};
+
+<AnalysisBoard 
+  startingFen={customFen}
+  startingPgn={customPgn}
+  onError={handleError}
+/>
+```
+
+### Error Types
+
+| Type | Description | Details |
+|------|-------------|---------|
+| `fen_pgn_conflict` | `startingFen` prop conflicts with PGN's FEN header | `providedFen`, `pgnFen`, `pgn` |
+| `invalid_pgn` | PGN contains no valid moves or is malformed | `pgn` |
+| `invalid_pgn_moves` | First move in PGN is illegal from starting position | `startingFen`, `firstMove`, `error` |
+| `invalid_fen_in_pgn` | FEN header in PGN is invalid | `fen`, `error` |
+| `pgn_parse_error` | Failed to parse PGN syntax | `pgn`, `error` |
 
 ## Container Modes
 
