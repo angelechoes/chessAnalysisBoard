@@ -412,16 +412,17 @@ const AnalysisBoard = ({
 
       // Use the new library to parse the PGN string into a structured object (Abstract Syntax Tree)
       const pgnAst = parse(pgnString, { startRule: 'game' });
+      console.log('pgnAst is:', pgnAst);
       
       if (!pgnAst || pgnAst.moves.length === 0) {
         reportError('invalid_pgn', 'Could not parse any moves from the PGN', { pgn: pgnString });
         return false;
       }
 
-      // Extract FEN from PGN headers if present
+      // Extract FEN from PGN tags if present
       let startingFenFromPgn = new Chess().fen(); // default starting position
-      if (pgnAst.headers && pgnAst.headers.FEN) {
-        startingFenFromPgn = pgnAst.headers.FEN;
+      if (pgnAst.tags && pgnAst.tags.FEN) {
+        startingFenFromPgn = pgnAst.tags.FEN;
         setCurrentStartingFen(startingFenFromPgn);
       }
 
