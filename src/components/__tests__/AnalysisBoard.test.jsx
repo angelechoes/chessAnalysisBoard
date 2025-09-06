@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AnalysisBoard from '../AnalysisBoard'
@@ -67,11 +67,14 @@ describe('AnalysisBoard', () => {
       render(<AnalysisBoard startingPgn={pgn} onPgnChange={mockOnPgnChange} />)
       
       await waitFor(() => {
-        // Should start from standard position
+        // Should start from standard position (PGN loaded but not navigated)
         expect(screen.getByTestId('chessboard')).toHaveAttribute(
           'data-position', 
-          'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+          'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
         )
+        // But moves should be displayed
+        expect(screen.getByText('e4')).toBeInTheDocument()
+        expect(screen.getByText('e5')).toBeInTheDocument()
       })
     })
 
@@ -208,19 +211,59 @@ describe('AnalysisBoard', () => {
   })
 
   describe('UI Interactions', () => {
-    it('loads PGN via UI', async () => {
+    it('loads PGN (no FEN header) without variations via UI and displays moves in the move panel', async () => {
       const user = userEvent.setup()
       render(<AnalysisBoard />)
       
-      const textarea = screen.getByDisplayValue('')
-      const loadButton = screen.getByText('Load PGN')
+      const textarea = document.querySelector('.pgn-textarea')
+      user.clear(textarea);
+      const loadButton = document.querySelector('.load-pgn-button')
       
-      await user.type(textarea, '1. e4 e5 *')
+      await user.type(textarea, '1. e4 e5 2. Nf3 Nc6 3. Bb5 f6 4. d3')
       await user.click(loadButton)
       
       await waitFor(() => {
-        expect(screen.getByText('e4')).toBeInTheDocument()
-        expect(screen.getByText('e5')).toBeInTheDocument()
+        const movesList = document.querySelector('.moves-list')
+        expect(within(movesList).queryByText('e4')).toBeInTheDocument()
+        expect(within(movesList).queryByText('e5')).toBeInTheDocument()
+        expect(within(movesList).queryByText('Nf3')).toBeInTheDocument() 
+        expect(within(movesList).queryByText('Nc6')).toBeInTheDocument()
+        expect(within(movesList).queryByText('Bb5')).toBeInTheDocument()
+        expect(within(movesList).queryByText('f6')).toBeInTheDocument()
+        expect(within(movesList).queryByText('d3')).toBeInTheDocument()
+        expect(within(movesList).queryByText('Na3')).not.toBeInTheDocument()
+      })
+    })
+
+    it('loads PGN (no FEN header) with variations via UI and displays moves in the move panel', async () => {
+      const user = userEvent.setup()
+      render(<AnalysisBoard />)
+      
+      const textarea = document.querySelector('.pgn-textarea')
+      await user.clear(textarea)
+      const loadButton = document.querySelector('.load-pgn-button')
+      
+      // Use fireEvent.change instead of user.type or user.paste
+      fireEvent.change(textarea, {
+        target: { 
+          value: '1. d4 d5 2. Nc3 Nf6 3. Bf4 { Starting position of the Jobava } e6 { After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3 } 4. e3 { Here we go for the more solid line }'
+        }
+      })
+      
+      await user.click(loadButton)
+      
+      await waitFor(() => {
+        const movesList = document.querySelector('.moves-list')
+        expect(within(movesList).getByText('d4')).toBeInTheDocument()
+        expect(within(movesList).getByText('d5')).toBeInTheDocument() 
+        expect(within(movesList).getByText('Nc3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Nf6')).toBeInTheDocument()
+        expect(within(movesList).getByText('Bf4')).toBeInTheDocument()
+        expect(within(movesList).getByText('e6')).toBeInTheDocument()
+        expect(within(movesList).getByText('e3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Starting position of the Jobava')).toBeInTheDocument()
+        expect(within(movesList).getByText('After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Here we go for the more solid line')).toBeInTheDocument()
       })
     })
 

@@ -135,11 +135,11 @@ const AnalysisBoard = ({
     children: [],
   });
 
-  useEffect( _=> {
-    console.log(`printing tree`);
-    console.log(tree);
-    console.log(`currentPath: ${currentPath}`);
-  }, [tree])
+  // useEffect( _=> {
+  //   console.log(`printing tree`);
+  //   console.log(tree);
+  //   console.log(`currentPath: ${currentPath}`);
+  // }, [tree])
 
   // currentPath tracks the location within the tree (e.g., [0, 1])
   const [currentPath, setCurrentPath] = useState([]);
@@ -412,6 +412,7 @@ const AnalysisBoard = ({
   
   // Load PGN from a given string (shared logic)
   const loadPgnFromString = (pgnString) => {
+    console.log('pgnString is:', pgnString);
     try {
       // The pgn-parser library returns null for an empty string.
       if (!pgnString) return false;
@@ -651,6 +652,14 @@ const AnalysisBoard = ({
     }
     
     fullPgn += pgnString.trim();
+    
+    // Add game termination marker if there are no moves
+    if (pgnString.trim() === '') {
+      fullPgn = fullPgn === '' ? ' *' : fullPgn + ' *';
+    } else if (!fullPgn.endsWith('*') && !fullPgn.match(/[10\/\-]$/)) {
+      fullPgn += ' *';
+    }
+    
     setPgnInput(fullPgn);
     
     // Notify parent component of PGN changes
@@ -766,7 +775,10 @@ const AnalysisBoard = ({
     if (!autoScrollEnabled || !movesListRef.current) return;
 
     // Use setTimeout to ensure the DOM has updated after the move selection
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      // Check if ref is still valid (component might have unmounted)
+      if (!movesListRef.current) return;
+      
       if (currentPath.length > 0) {
         // Scroll to selected move
         const moveId = `move-${currentPath.join('-')}`;
@@ -792,12 +804,17 @@ const AnalysisBoard = ({
         }
       } else {
         // Jump to start - scroll to top
-        movesListRef.current.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
+        if (movesListRef.current && movesListRef.current.scrollTo) {
+          movesListRef.current.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
       }
     }, 50);
+
+    // Cleanup function to clear timeout if component unmounts or dependencies change
+    return () => clearTimeout(timeoutId);
   }, [currentPath, autoScrollEnabled]);
 
   const MoveRenderer = ({ node, path, isVariation, showMoveNumber, ...props }) => {

@@ -29,10 +29,12 @@ Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
   writable: true,
 })
 
-// Mock navigator.clipboard
+// Mock navigator.clipboard - make it configurable so userEvent can override it
 Object.defineProperty(navigator, 'clipboard', {
   value: {
     writeText: () => Promise.resolve(),
+    readText: () => Promise.resolve(''),
   },
   writable: true,
+  configurable: true,
 })
