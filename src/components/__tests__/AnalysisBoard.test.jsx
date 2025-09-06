@@ -235,7 +235,45 @@ describe('AnalysisBoard', () => {
       })
     })
 
-    it('loads PGN (no FEN header) with variations via UI and displays moves in the move panel', async () => {
+    it('loads PGN (no FEN header) with variations and comments via UI and displays moves in the move panel', async () => {
+      const user = userEvent.setup()
+      render(<AnalysisBoard />)
+      
+      const textarea = document.querySelector('.pgn-textarea')
+      await user.clear(textarea)
+      const loadButton = document.querySelector('.load-pgn-button')
+      
+      // Use fireEvent.change instead of user.type @testing-library/react recognises { } as special characters and the escapting
+      // behaviour is not working as expected according to their documentation (https://testing-library.com/docs/user-event/keyboard/)
+      fireEvent.change(textarea, {
+        target: { 
+          value: '1. d4 d5 2. Nc3 Nf6 3. Bf4 { Starting position of the Jobava } e6 { After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3 } 4. e3 { Here we go for the more solid line } (Nb5 { Nb5 is more aggressive } Na6 { ...Na6 along with ...Bf6 are most common } 5. e3)'
+        }
+      })
+      
+      await user.click(loadButton)
+      
+      // Note that the above PGN has the move e3 twice (in separate variations) so we must use getAllByText instead of getByText for e3
+      await waitFor(() => {
+        const movesList = document.querySelector('.moves-list')
+        expect(within(movesList).getByText('d4')).toBeInTheDocument()
+        expect(within(movesList).getByText('d5')).toBeInTheDocument() 
+        expect(within(movesList).getByText('Nc3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Nf6')).toBeInTheDocument()
+        expect(within(movesList).getByText('Bf4')).toBeInTheDocument()
+        expect(within(movesList).getByText('e6')).toBeInTheDocument()
+        expect(within(movesList).getAllByText('e3')).toHaveLength(2) // two instances of e3 in the PGN
+        expect(within(movesList).getByText('Nb5')).toBeInTheDocument()
+        expect(within(movesList).getByText('Na6')).toBeInTheDocument()
+        expect(within(movesList).getByText('Starting position of the Jobava')).toBeInTheDocument()
+        expect(within(movesList).getByText('After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Here we go for the more solid line')).toBeInTheDocument()
+        expect(within(movesList).getByText('Nb5 is more aggressive')).toBeInTheDocument()
+        expect(within(movesList).getByText('...Na6 along with ...Bf6 are most common')).toBeInTheDocument()
+      })
+    })
+
+    it('loads PGN (no FEN header) with variations, sub-variations and comments via UI and displays moves in the move panel', async () => {
       const user = userEvent.setup()
       render(<AnalysisBoard />)
       
@@ -246,7 +284,7 @@ describe('AnalysisBoard', () => {
       // Use fireEvent.change instead of user.type or user.paste
       fireEvent.change(textarea, {
         target: { 
-          value: '1. d4 d5 2. Nc3 Nf6 3. Bf4 { Starting position of the Jobava } e6 { After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3 } 4. e3 { Here we go for the more solid line }'
+          value: "1. d4 d5 2. Nc3 Nf6 3. Bf4 { Starting position of the Jobava } e6 { After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3 } 4. e3 { Here we go for the more solid line } (Nb5 { Nb5 is more aggressive. Here Blacks most common moves are ...Na6, ...Bd6 or ...Bb4! (super rare). Let's explore them all. } Na6 { ...Na6 along with ...Bf6 are most common } (4... Bd6 { ...Bd6 is logical. White should exchange B's here and Black gets left with weak doubled pawns on d6 and d5 can become targets } 5. Nxd6+ cxd6) (4... Bb4+ { This move is exceedingly rare but actually pretty clever } 5. c3 Ba5 6. a4 { Threatening b4! trapping the bishop } (b4 { b4 immediately is not quite as strong })) 5. e3) *"
         }
       })
       
@@ -260,10 +298,26 @@ describe('AnalysisBoard', () => {
         expect(within(movesList).getByText('Nf6')).toBeInTheDocument()
         expect(within(movesList).getByText('Bf4')).toBeInTheDocument()
         expect(within(movesList).getByText('e6')).toBeInTheDocument()
-        expect(within(movesList).getByText('e3')).toBeInTheDocument()
+        expect(within(movesList).getAllByText('e3')).toHaveLength(2) // two instances of e3 in the PGN
+        expect(within(movesList).getByText('Nb5')).toBeInTheDocument()
+        expect(within(movesList).getByText('Na6')).toBeInTheDocument()
+        expect(within(movesList).getByText('Bd6')).toBeInTheDocument()
+        expect(within(movesList).getByText('Bb4+')).toBeInTheDocument()
+        expect(within(movesList).getByText('c3')).toBeInTheDocument()
+        expect(within(movesList).getByText('Ba5')).toBeInTheDocument()
+        expect(within(movesList).getByText('a4')).toBeInTheDocument()
+        expect(within(movesList).getByText('b4')).toBeInTheDocument()
+        expect(within(movesList).getByText('Nxd6+')).toBeInTheDocument()
+        expect(within(movesList).getByText('cxd6')).toBeInTheDocument()
         expect(within(movesList).getByText('Starting position of the Jobava')).toBeInTheDocument()
         expect(within(movesList).getByText('After ...e6 White has two main options, to go for Nb5 (more aggressive) or the more solid e3')).toBeInTheDocument()
         expect(within(movesList).getByText('Here we go for the more solid line')).toBeInTheDocument()
+        expect(within(movesList).getByText('Nb5 is more aggressive. Here Blacks most common moves are ...Na6, ...Bd6 or ...Bb4! (super rare). Let\'s explore them all.')).toBeInTheDocument()
+        expect(within(movesList).getByText('...Na6 along with ...Bf6 are most common')).toBeInTheDocument()
+        expect(within(movesList).getByText('...Bd6 is logical. White should exchange B\'s here and Black gets left with weak doubled pawns on d6 and d5 can become targets')).toBeInTheDocument()
+        expect(within(movesList).getByText('This move is exceedingly rare but actually pretty clever')).toBeInTheDocument()
+        expect(within(movesList).getByText('Threatening b4! trapping the bishop')).toBeInTheDocument()
+        expect(within(movesList).getByText('b4 immediately is not quite as strong')).toBeInTheDocument()
       })
     })
 
@@ -271,7 +325,7 @@ describe('AnalysisBoard', () => {
       const user = userEvent.setup()
       render(<AnalysisBoard enableFenInput={true} />)
       
-      await user.keyboard('{Shift>}f{/Shift}')
+      await user.keyboard('{Shift>}F{/Shift}')
       
       await waitFor(() => {
         expect(screen.getByText('Starting Position (FEN)')).toBeInTheDocument()
@@ -285,7 +339,7 @@ describe('AnalysisBoard', () => {
       render(<AnalysisBoard enableFenInput={true} />)
       
       // Show FEN input
-      await user.keyboard('{Shift>}f{/Shift}')
+      await user.keyboard('{Shift>}F{/Shift}')
       
       await waitFor(() => {
         expect(screen.getByText('Starting Position (FEN)')).toBeInTheDocument()
