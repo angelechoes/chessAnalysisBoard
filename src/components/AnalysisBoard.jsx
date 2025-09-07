@@ -381,10 +381,14 @@ const AnalysisBoard = ({
       if (existingChildIndex !== -1) {
         // If it exists, we just navigate to it
         setCurrentPath([...currentPath, existingChildIndex]);
+        // Update comment for existing move
+        setComment(parentNode.children[existingChildIndex].comment || '');
       } else {
         // If it's a new move, add it as a new variation/child
         parentNode.children.push(newNode);
         setCurrentPath([...currentPath, parentNode.children.length - 1]);
+        // Clear comment for new move
+        setComment('');
       }
     });
     return true;
