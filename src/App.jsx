@@ -4,7 +4,8 @@ import AnalysisBoard from './components/AnalysisBoard'
 function App() {
   return (
     <div className="App">
-      <AnalysisBoard />
+      <AnalysisBoard
+      />
     </div>
   )
 }

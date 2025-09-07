@@ -326,7 +326,9 @@ fn main() {
 | `showExternalSettings` | `boolean` | `false` | Whether to show settings modal externally |
 | `onToggleSettings` | `Function \| null` | `null` | Callback to toggle settings modal |
 | `startingFen` | `string \| null` | `null` | Custom starting position in FEN notation |
+| `startingPgn` | `string \| null` | `null` | Load a complete game/analysis from PGN notation |
 | `onPgnChange` | `Function \| null` | `null` | Callback when PGN changes (for external save functionality) |
+| `onError` | `Function \| null` | `null` | Callback for error reporting (validation, parsing, conflicts) |
 | `enableFenInput` | `boolean` | `true` | Whether to enable FEN input functionality |
 | `enablePgnBox` | `boolean` | `true` | Whether to show the PGN input/output box |
 | `containerMode` | `string` | `'standalone'` | Layout mode: `'standalone'` (viewport-based) or `'embedded'` (container-relative) |
@@ -340,6 +342,49 @@ fn main() {
   nextMove: 'j'          // Key to go to next move
 }
 ```
+
+## Error Handling
+
+The component validates input and reports errors via the `onError` callback:
+
+```jsx
+const handleError = (error) => {
+  console.error('Chess Analysis Error:', error);
+  
+  switch (error.type) {
+    case 'fen_pgn_conflict':
+      showUserMessage('The starting position conflicts with the PGN');
+      break;
+    case 'invalid_pgn':
+      showUserMessage('Invalid PGN format');
+      break;
+    case 'invalid_pgn_moves':
+      showUserMessage('PGN moves are not legal from the starting position');
+      break;
+    case 'invalid_fen_in_pgn':
+      showUserMessage('Invalid FEN in PGN header');
+      break;
+    default:
+      showUserMessage('Chess analysis error occurred');
+  }
+};
+
+<AnalysisBoard 
+  startingFen={customFen}
+  startingPgn={customPgn}
+  onError={handleError}
+/>
+```
+
+### Error Types
+
+| Type | Description | Details |
+|------|-------------|---------|
+| `fen_pgn_conflict` | `startingFen` prop conflicts with PGN's FEN header | `providedFen`, `pgnFen`, `pgn` |
+| `invalid_pgn` | PGN contains no valid moves or is malformed | `pgn` |
+| `invalid_pgn_moves` | First move in PGN is illegal from starting position | `startingFen`, `firstMove`, `error` |
+| `invalid_fen_in_pgn` | FEN header in PGN is invalid | `fen`, `error` |
+| `pgn_parse_error` | Failed to parse PGN syntax | `pgn`, `error` |
 
 ## Container Modes
 
@@ -470,7 +515,21 @@ The component supports custom starting positions via FEN (Forsyth-Edwards Notati
 
 // Example: King and Pawn endgame
 <AnalysisBoard 
-  startingFen="8/8/8/8/8/8/4K1k1/8 w - - 0 1"
+  startingFen="8/8/4k3/8/8/4P3/4K3/8 w - - 0 1"
+/>
+
+// Load a complete game with moves, variations, and comments
+<AnalysisBoard 
+  startingPgn={`1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Spanish Opening} a6 
+(3... f5 {The Schliemann Defense} 4. Nc3 fxe4 5. Nxe4) 
+4. Ba4 Nf6 5. O-O Be7 *`}
+/>
+
+// Load from a custom starting position with PGN
+<AnalysisBoard 
+  startingPgn={`[FEN "rnbqkb1r/ppp2ppp/4pn2/3p4/3P1B2/2N5/PPP1PPPP/R2QKBNR w KQkq - 0 1"]
+
+1. Nb5 Na6 (1... Bd6 2. Nxd6+ cxd6 3. e3) 2. e3 c6 3. Nc3 *`}
 />
 ```
 
@@ -536,13 +595,264 @@ The component uses CSS classes that can be customized:
 - Firefox 85+
 - Safari 14+
 
+## Testing
+
+Below is the unit testing setup used
+
+### Testing Framework
+
+- **Vitest**: Fast unit test runner with Vite integration
+- **React Testing Library**: Component testing with user-centric queries
+- **JSDOM**: DOM simulation for browser-like testing environment
+- **User Event**: Realistic user interaction simulation
+
+### Test Structure
+
+```
+src/
+├── components/
+│   ├── __tests__/
+│   │   ├── AnalysisBoard.test.jsx    # Main component tests
+│   │   └── pgn-parsing.test.js       # PGN parsing logic tests
+│   └── AnalysisBoard.jsx
+└── test/
+    └── setup.js                      # Test environment configuration
+```
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm run test:run
+
+# Run tests in watch mode (development)
+npm test
+
+# Run specific test by name
+npm run test:run -- -t "loads PGN via UI"
+
+# Run tests with UI (requires @vitest/ui) - Spins up a UI accessible at localhost:51204 for investigating failed unit tests
+npm run test:ui
+
+# Run tests with coverage // NOT CURRENTLY SET UP
+npm run test:run -- --coverage
+```
+
+### Test Categories
+
+#### 1. Component Rendering Tests
+- Basic component rendering with default props
+- Conditional rendering based on props (`enablePgnBox`, `enableFenInput`)
+- Container mode variations (`standalone` vs `embedded`)
+
+#### 2. PGN Functionality Tests
+- Loading PGN from props (`startingPgn`)
+- PGN parsing with variations and comments
+- PGN generation and callback notifications
+- Error handling for invalid PGN
+
+#### 3. FEN Support Tests
+- Custom starting positions via `startingFen` prop
+- FEN validation and error reporting
+- FEN header conflicts with PGN
+
+#### 4. User Interaction Tests
+- PGN loading via UI (textarea input)
+- FEN input toggle (Shift+F keyboard shortcut)
+- Move navigation and selection
+- Settings panel interactions
+
+#### 5. Integration Tests
+- PGN with complex variations and sub-variations
+- Comments and move annotations
+- Error boundary and validation
+
+### Test Configuration
+
+#### Vitest Configuration (`vitest.config.js`)
+```javascript
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',           // Browser-like environment
+    setupFiles: ['./src/test/setup.js'],
+    globals: true,                  // Global test functions (describe, it, expect)
+  },
+})
+```
+
+#### Test Setup (`src/test/setup.js`)
+```javascript
+import '@testing-library/jest-dom'
+
+// Mock ResizeObserver for component tests
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback) { this.callback = callback }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+// Mock getBoundingClientRect for layout tests
+Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
+  value: () => ({ width: 500, height: 500, top: 0, left: 0, bottom: 500, right: 500 }),
+  writable: true,
+})
+
+// Mock navigator.clipboard for user interactions
+Object.defineProperty(navigator, 'clipboard', {
+  value: { writeText: () => Promise.resolve(), readText: () => Promise.resolve('') },
+  writable: true,
+  configurable: true,
+})
+```
+
+### Testing Best Practices
+
+#### 1. User-Centric Testing
+```javascript
+// ✅ Good: Test from user's perspective
+const textarea = screen.getByRole('textbox', { name: /pgn/i })
+await user.type(textarea, '1. e4 e5 *')
+
+// ❌ Avoid: Testing implementation details
+const pgnInput = component.state.pgnInput
+```
+
+#### 2. Async Testing
+```javascript
+// ✅ Good: Wait for async operations
+await waitFor(() => {
+  expect(screen.getByText('e4')).toBeInTheDocument()
+})
+
+// ✅ Good: Use proper async/await
+it('loads PGN via UI', async () => {
+  const user = userEvent.setup()
+  // ... test code
+})
+```
+
+#### 3. Mocking External Dependencies
+```javascript
+// Mock react-chessboard for faster, more reliable tests
+vi.mock('react-chessboard', () => ({
+  Chessboard: ({ position, onPieceDrop }) => (
+    <div data-testid="chessboard" data-position={position}>
+      Mock Chessboard
+    </div>
+  ),
+}))
+```
+
+#### 4. Testing Error States
+```javascript
+it('reports error for invalid PGN', async () => {
+  const mockOnError = vi.fn()
+  render(<AnalysisBoard startingPgn="invalid pgn" onError={mockOnError} />)
+  
+  await waitFor(() => {
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'pgn_parse_error' })
+    )
+  })
+})
+```
+
+### Common Testing Patterns
+
+#### Testing Keyboard Shortcuts
+```javascript
+// For complex keyboard combinations, use fireEvent
+fireEvent.keyDown(document, { key: 'F', shiftKey: true })
+
+// For simple typing, use userEvent
+await user.keyboard('{Shift>}F{/Shift}')
+```
+
+#### Testing Multiple Elements
+```javascript
+// When expecting multiple instances of the same text
+const e3Moves = within(movesList).getAllByText('e3')
+expect(e3Moves).toHaveLength(2) // Verify exactly 2 instances
+```
+
+#### Testing Complex User Flows
+```javascript
+it('loads PGN with variations via UI', async () => {
+  const user = userEvent.setup()
+  render(<AnalysisBoard />)
+  
+  // 1. Get UI elements
+  const textarea = document.querySelector('.pgn-textarea')
+  const loadButton = document.querySelector('.load-pgn-button')
+  
+  // 2. Simulate user input
+  fireEvent.change(textarea, {
+    target: { value: '1. d4 d5 2. Nc3 Nf6 3. Bf4 { comment } e6 *' }
+  })
+  
+  // 3. Trigger action
+  await user.click(loadButton)
+  
+  // 4. Verify results
+  await waitFor(() => {
+    const movesList = document.querySelector('.moves-list')
+    expect(within(movesList).getByText('d4')).toBeInTheDocument()
+    expect(within(movesList).getByText('comment')).toBeInTheDocument()
+  })
+})
+```
+
+### Test Coverage
+
+The test suite covers:
+- ✅ Component rendering and props
+- ✅ PGN parsing and generation
+- ✅ FEN validation and conflicts
+- ✅ User interactions (keyboard, mouse)
+- ✅ Error handling and edge cases
+- ✅ Settings and customization
+- ✅ Container modes and responsive behavior
+
+### Debugging Tests
+
+#### Visual Test Output
+```bash
+# Use screen.debug() in tests to see DOM structure
+screen.debug() // Prints current DOM state
+```
+
+#### Test UI for Interactive Debugging
+```bash
+# Install and use Vitest UI for visual test debugging
+npm install --save-dev @vitest/ui
+npm run test:ui
+```
+
+#### Running Specific Tests
+```bash
+# Run tests matching a pattern
+npm run test:run -- -t "UI Interactions"
+
+# Run tests in a specific file
+npm run test:run -- AnalysisBoard.test.jsx
+
+# Run tests with verbose output
+npm run test:run -- --reporter=verbose
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+4. Add tests for new functionality
+5. Ensure all tests pass: `npm run test:run`
+6. Submit a pull request
 
 ## License
 

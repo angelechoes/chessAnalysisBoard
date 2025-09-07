@@ -15,7 +15,9 @@ const AnalysisBoard = ({
   showExternalSettings = false,
   onToggleSettings = null,
   startingFen = null,
+  startingPgn = null,
   onPgnChange = null,
+  onError = null,
   enableFenInput = true,
   enablePgnBox = true,
   containerMode = 'standalone'
@@ -29,6 +31,15 @@ const AnalysisBoard = ({
   const [isResizing, setIsResizing] = useState(false);
   const [collapsedMoves, setCollapsedMoves] = useState(false);
   const lastBoardWidthRef = useRef(500);
+
+  // Helper to report errors to parent component
+  const reportError = useCallback((type, message, details = null) => {
+    const error = { type, message, details };
+    console.error('AnalysisBoard Error:', error);
+    if (onError) {
+      onError(error);
+    }
+  }, [onError]);
 
   useEffect(() => {
     if (containerMode !== 'embedded') {
@@ -124,11 +135,11 @@ const AnalysisBoard = ({
     children: [],
   });
 
-  useEffect( _=> {
-    console.log(`printing tree`);
-    console.log(tree);
-    console.log(`currentPath: ${currentPath}`);
-  }, [tree])
+  // useEffect( _=> {
+  //   console.log(`printing tree`);
+  //   console.log(tree);
+  //   console.log(`currentPath: ${currentPath}`);
+  // }, [tree])
 
   // currentPath tracks the location within the tree (e.g., [0, 1])
   const [currentPath, setCurrentPath] = useState([]);
@@ -194,6 +205,127 @@ const AnalysisBoard = ({
     }
   }, [startingFen, currentStartingFen, setTree]);
 
+  // Load starting PGN when prop changes
+  useEffect(() => {
+    if (startingPgn) {
+      try {
+        const pgnAst = parse(startingPgn, { startRule: 'game' });
+        
+        if (!pgnAst || pgnAst.moves.length === 0) {
+          reportError('invalid_pgn', 'The provided PGN contains no valid moves', { pgn: startingPgn });
+          return;
+        }
+
+        // Extract FEN from PGN tags if present
+        let startingFenFromPgn = new Chess().fen(); // default starting position
+        let pgnHasFenHeader = false;
+        
+        if (pgnAst.tags && pgnAst.tags.FEN) {
+          pgnHasFenHeader = true;
+          startingFenFromPgn = pgnAst.tags.FEN;
+          
+          // Validate the FEN from PGN header
+          try {
+            new Chess(startingFenFromPgn);
+          } catch (fenError) {
+            reportError('invalid_fen_in_pgn', 'The FEN position in the PGN header is invalid', { 
+              fen: startingFenFromPgn, 
+              error: fenError.message 
+            });
+            return;
+          }
+          
+          // Check if startingFen prop conflicts with PGN's FEN header
+          if (startingFen && startingFen !== startingFenFromPgn) {
+            reportError('fen_pgn_conflict', 'The startingFen prop conflicts with the FEN header in the PGN', {
+              providedFen: startingFen,
+              pgnFen: startingFenFromPgn,
+              pgn: startingPgn
+            });
+            return;
+          }
+        } else if (startingFen) {
+          // PGN has no FEN header, use startingFen prop if provided
+          startingFenFromPgn = startingFen;
+        }
+
+        // Validate that the first move in PGN is legal from the starting position
+        try {
+          const testGame = new Chess(startingFenFromPgn);
+          const firstMove = pgnAst.moves[0];
+          if (firstMove && firstMove.notation) {
+            testGame.move(firstMove.notation.notation);
+          }
+        } catch (moveError) {
+          reportError('invalid_pgn_moves', 'The first move in the PGN is not legal from the starting position', {
+            startingFen: startingFenFromPgn,
+            firstMove: pgnAst.moves[0]?.notation?.notation,
+            error: moveError.message
+          });
+          return;
+        }
+
+        if (pgnAst && pgnAst.moves.length > 0) {
+          setCurrentStartingFen(startingFenFromPgn);
+
+          setTree(draft => {
+            draft.id = 'root';
+            draft.san = null;
+            draft.comment = '';
+            draft.fen = startingFenFromPgn;
+            draft.ply = -1;
+            draft.children = [];
+            
+            const addMovesToNode = (currentParentNode, moves) => {
+              if (!moves || moves.length === 0) return;
+              let lastNodeForThisLine = currentParentNode;
+
+              for (const move of moves) {
+                const game = new Chess(lastNodeForThisLine.fen);
+                const moveResult = game.move(move.notation.notation);
+                
+                if (moveResult) {
+                  const newNode = {
+                    id: nextId++,
+                    move: moveResult,
+                    san: moveResult.san,
+                    comment: [
+                      ...(move.commentBefore ? [move.commentBefore] : []),
+                      ...(move.commentMove ? [move.commentMove] : []),
+                      ...(move.commentAfter ? [move.commentAfter] : [])
+                    ].join(' ').trim(),
+                    fen: game.fen(),
+                    ply: lastNodeForThisLine.ply + 1,
+                    children: [],
+                  };
+                  lastNodeForThisLine.children.push(newNode);
+
+                  if (move.variations) {
+                    move.variations.forEach(variation => {
+                      addMovesToNode(lastNodeForThisLine, variation);
+                    });
+                  }
+                  
+                  lastNodeForThisLine = newNode;
+                }
+              }
+            };
+            
+            addMovesToNode(draft, pgnAst.moves);
+          });
+
+          setCurrentPath([]);
+          setPgnInput(startingPgn);
+        }
+      } catch (error) {
+        reportError('pgn_parse_error', 'Failed to parse the starting PGN', { 
+          pgn: startingPgn, 
+          error: error.message 
+        });
+      }
+    }
+  }, [startingPgn, startingFen, setTree, reportError]);
+
   // Find a node in the tree by its path
   const getNode = useCallback((path, sourceTree = tree) => {
     let node = sourceTree;
@@ -249,10 +381,14 @@ const AnalysisBoard = ({
       if (existingChildIndex !== -1) {
         // If it exists, we just navigate to it
         setCurrentPath([...currentPath, existingChildIndex]);
+        // Update comment for existing move
+        setComment(parentNode.children[existingChildIndex].comment || '');
       } else {
         // If it's a new move, add it as a new variation/child
         parentNode.children.push(newNode);
         setCurrentPath([...currentPath, parentNode.children.length - 1]);
+        // Clear comment for new move
+        setComment('');
       }
     });
     return true;
@@ -278,17 +414,27 @@ const AnalysisBoard = ({
     setPgnInput(event.target.value);
   };
   
-  const handleLoadPgn = () => {
+  // Load PGN from a given string (shared logic)
+  const loadPgnFromString = (pgnString) => {
+    console.log('pgnString is:', pgnString);
     try {
       // The pgn-parser library returns null for an empty string.
-      if (!pgnInput) return;
+      if (!pgnString) return false;
 
       // Use the new library to parse the PGN string into a structured object (Abstract Syntax Tree)
-      const pgnAst = parse(pgnInput, { startRule: 'game' });
+      const pgnAst = parse(pgnString, { startRule: 'game' });
+      console.log('pgnAst is:', pgnAst);
       
       if (!pgnAst || pgnAst.moves.length === 0) {
-        alert('Could not parse any moves from the PGN.');
-        return;
+        reportError('invalid_pgn', 'Could not parse any moves from the PGN', { pgn: pgnString });
+        return false;
+      }
+
+      // Extract FEN from PGN tags if present
+      let startingFenFromPgn = new Chess().fen(); // default starting position
+      if (pgnAst.tags && pgnAst.tags.FEN) {
+        startingFenFromPgn = pgnAst.tags.FEN;
+        setCurrentStartingFen(startingFenFromPgn);
       }
 
       setTree(draft => {
@@ -296,7 +442,7 @@ const AnalysisBoard = ({
         draft.id = 'root';
         draft.san = null;
         draft.comment = '';
-        draft.fen = currentStartingFen;
+        draft.fen = startingFenFromPgn;
         draft.ply = -1;
         draft.children = [];
         
@@ -347,9 +493,17 @@ const AnalysisBoard = ({
       });
 
       setCurrentPath([]);
+      return true;
 
     } catch (error) {
-      console.error("Invalid PGN:", error);
+      reportError('pgn_parse_error', 'Failed to parse PGN', { pgn: pgnString, error: error.message });
+      return false;
+    }
+  };
+
+  const handleLoadPgn = () => {
+    const success = loadPgnFromString(pgnInput);
+    if (!success) {
       alert("The PGN is invalid and could not be loaded.");
     }
   };
@@ -502,6 +656,14 @@ const AnalysisBoard = ({
     }
     
     fullPgn += pgnString.trim();
+    
+    // Add game termination marker if there are no moves
+    if (pgnString.trim() === '') {
+      fullPgn = fullPgn === '' ? ' *' : fullPgn + ' *';
+    } else if (!fullPgn.endsWith('*') && !fullPgn.match(/[10\/\-]$/)) {
+      fullPgn += ' *';
+    }
+    
     setPgnInput(fullPgn);
     
     // Notify parent component of PGN changes
@@ -617,7 +779,10 @@ const AnalysisBoard = ({
     if (!autoScrollEnabled || !movesListRef.current) return;
 
     // Use setTimeout to ensure the DOM has updated after the move selection
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      // Check if ref is still valid (component might have unmounted)
+      if (!movesListRef.current) return;
+      
       if (currentPath.length > 0) {
         // Scroll to selected move
         const moveId = `move-${currentPath.join('-')}`;
@@ -643,12 +808,17 @@ const AnalysisBoard = ({
         }
       } else {
         // Jump to start - scroll to top
-        movesListRef.current.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
+        if (movesListRef.current && movesListRef.current.scrollTo) {
+          movesListRef.current.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
       }
     }, 50);
+
+    // Cleanup function to clear timeout if component unmounts or dependencies change
+    return () => clearTimeout(timeoutId);
   }, [currentPath, autoScrollEnabled]);
 
   const MoveRenderer = ({ node, path, isVariation, showMoveNumber, ...props }) => {
